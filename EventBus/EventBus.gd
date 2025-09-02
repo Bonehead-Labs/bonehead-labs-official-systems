@@ -1,3 +1,10 @@
-extends Node
+class_name EventBus
 
-var test: StringName = "Fuck off"
+func pub(topic: StringName, payload: Dictionary) -> void:
+    pass
+
+func sub(topic: StringName, cb: Callable) -> void:
+    pass
+
+
+
