@@ -3,7 +3,7 @@ class_name EventBus
 var _subs: Dictionary = {} #Dictionary[StringName, Array[Callable]]
 
 
-
+# Subscribe to an event
 func sub(topic: StringName, cb: Callable) -> void:
     var key = StringName(topic)
     if not _subs.has(key):
