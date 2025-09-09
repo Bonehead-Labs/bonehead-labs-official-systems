@@ -2,9 +2,20 @@ class_name EventBus extends Node
 
 var _subs: Dictionary = {} #Dictionary[StringName, Array[Callable]]
 var deferred_mode: bool = false
+var strict_mode: bool = false
+
+func _validate_topic(topic: StringName) -> bool:
+    if not strict_mode:
+        return true
+    if not EventTopics.is_valid(topic):
+        push_error("EventBus: invalid topic '%s'" % [topic])
+        return false
+    return true
 
 # Subscribe to an event
 func sub(topic: StringName, cb: Callable) -> void:
+    if not _validate_topic(topic):
+        return
     var key = StringName(topic)
     var arr: Array = _subs.get(key, [])
     if not arr.has(cb):
@@ -22,11 +33,13 @@ func unsub(topic: StringName, cb: Callable) -> void:
 
 
 func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false) -> void:
+    if not _validate_topic(topic):
+        return
     var key := StringName(topic)
     var envelope: Dictionary = {
         "topic": key,
         "payload": payload,
-        "timestamp": Time.get_ticks_msec(),
+        "timestamp_ms": Time.get_ticks_msec(),
         "frame": Engine.get_frames_drawn()
     }
     if not _subs.has(key):
