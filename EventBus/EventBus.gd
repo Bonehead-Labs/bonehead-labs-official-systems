@@ -87,10 +87,8 @@ func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_enve
             err = cb.call(envelope["payload"])
         if typeof(err) == TYPE_INT and err != OK:
             push_warning("EventBus: handler error on topic %s err %s" % [key, err])
-
-    for cb_all in _catch_all.duplicate():
-        if cb_all and cb_all.is_valid():
-            cb_all.call(envelope)
+    
+    _dispatch_catch_all(envelope)  # <- use the helper
 
     if pruned:
         # remove invalids from the stored list
