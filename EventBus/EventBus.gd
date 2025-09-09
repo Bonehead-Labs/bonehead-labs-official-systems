@@ -20,8 +20,14 @@ func unsub(topic: StringName, cb: Callable) -> void:
         _subs.erase(key)
 
 
-func pub(topic: StringName, payload: Dictionary) -> void:
+func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false) -> void:
     var key := StringName(topic)
+    var envelope: Dictionary = {
+        "topic": topic,
+        "payload": payload,
+        "timestamp": Time.get_ticks_msec(),
+        "frame": Engine.get_frames_drawn()
+    }
     if not _subs.has(key):
         return
     var listeners: Array = _subs[key].duplicate()
@@ -29,7 +35,10 @@ func pub(topic: StringName, payload: Dictionary) -> void:
         if not cb or not cb.is_valid():
             continue
         var err := OK
-        err = cb.call(payload)
+        if use_envelope:
+            err = cb.call(envelope)
+        else:
+            err = cb.call(payload)
         if typeof(err) == TYPE_INT and err != OK:
             print("EventBus: handler returned error on topic: ", key, " err: ", err)
 
