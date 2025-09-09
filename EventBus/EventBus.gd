@@ -1,6 +1,7 @@
 class_name EventBus extends Node
 
 var _subs: Dictionary = {} #Dictionary[StringName, Array[Callable]]
+var _catch_all: Array[Callable] = []
 var deferred_mode: bool = false
 var strict_mode: bool = false
 
@@ -51,6 +52,22 @@ func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false
     else:
         _dispatch(key, envelope, listeners, use_envelope)
 
+func sub_all(cb: Callable) -> void:
+    if not _catch_all.has(cb):
+        _catch_all.append(cb)
+
+func unsub_all(cb: Callable) -> void:
+    _catch_all.erase(cb)
+
+func _dispatch_catch_all(envelope: Dictionary) -> void:
+    for cb in _catch_all:
+        if not cb or not cb.is_valid():
+            continue
+        var err := OK
+        err = cb.call(envelope)
+        if typeof(err) == TYPE_INT and err != OK:
+            push_warning("EventBus: handler error on catch all err %s" % [err])
+
 func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_envelope: bool) -> void:
     var pruned := false
     for cb in listeners:
@@ -64,6 +81,11 @@ func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_enve
             err = cb.call(envelope["payload"])
         if typeof(err) == TYPE_INT and err != OK:
             push_warning("EventBus: handler error on topic %s err %s" % [key, err])
+
+    for cb_all in _catch_all.duplicate():
+        if cb_all and cb_all.is_valid():
+            cb_all.call(envelope)
+            
     if pruned:
         # remove invalids from the stored list
         var current: Array = _subs.get(key, [])
