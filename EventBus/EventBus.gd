@@ -5,6 +5,7 @@ var _catch_all: Array[Callable] = []
 var deferred_mode: bool = false
 var strict_mode: bool = false
 
+# Validate topic before subscribing or publishing
 func _validate_topic(topic: StringName) -> bool:
     if not strict_mode:
         return true
@@ -12,6 +13,7 @@ func _validate_topic(topic: StringName) -> bool:
         push_error("EventBus: invalid topic '%s'" % [topic])
         return false
     return true
+
 
 # Subscribe to an event
 func sub(topic: StringName, cb: Callable) -> void:
@@ -23,7 +25,7 @@ func sub(topic: StringName, cb: Callable) -> void:
         arr.append(cb)
     _subs[key] = arr
 
-
+# Unsubscribe from an event
 func unsub(topic: StringName, cb: Callable) -> void:
     var key := StringName(topic)
     if not _subs.has(key):
@@ -32,7 +34,7 @@ func unsub(topic: StringName, cb: Callable) -> void:
     if _subs[key].is_empty():
         _subs.erase(key)
 
-
+# Publish an event
 func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false) -> void:
     if not _validate_topic(topic):
         return
@@ -52,13 +54,16 @@ func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false
     else:
         _dispatch(key, envelope, listeners, use_envelope)
 
+# Subscribe to all events
 func sub_all(cb: Callable) -> void:
     if not _catch_all.has(cb):
         _catch_all.append(cb)
 
+# Unsubscribe from all events
 func unsub_all(cb: Callable) -> void:
     _catch_all.erase(cb)
 
+# Dispatch an event to all subscribers
 func _dispatch_catch_all(envelope: Dictionary) -> void:
     for cb in _catch_all:
         if not cb or not cb.is_valid():
@@ -68,6 +73,7 @@ func _dispatch_catch_all(envelope: Dictionary) -> void:
         if typeof(err) == TYPE_INT and err != OK:
             push_warning("EventBus: handler error on catch all err %s" % [err])
 
+# Dispatch an event
 func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_envelope: bool) -> void:
     var pruned := false
     for cb in listeners:
@@ -85,7 +91,7 @@ func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_enve
     for cb_all in _catch_all.duplicate():
         if cb_all and cb_all.is_valid():
             cb_all.call(envelope)
-            
+
     if pruned:
         # remove invalids from the stored list
         var current: Array = _subs.get(key, [])
