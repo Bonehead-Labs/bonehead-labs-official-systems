@@ -23,7 +23,7 @@ Subscribe to specific topics like "ui/toast" or "scene/change" instead of catchi
 Dev tools (like an EventBus inspector) may subscribe to all and filter in code:
 ```
 if topic.begins_with("combat/"):
-    print("Combat event:", topic)
+	print("Combat event:", topic)
 ```
 ## Format
 ```

@@ -11,8 +11,13 @@ config_version=5
 [application]
 
 config/name="bonehead-labs-official-systems"
+run/main_scene="uid://m28heqtswbuq"
 config/features=PackedStringArray("4.4", "GL Compatibility")
 config/icon="uid://c3hfyfmy1awmy"
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [rendering]
 
