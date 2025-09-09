@@ -6,9 +6,10 @@ var deferred_mode: bool = false
 # Subscribe to an event
 func sub(topic: StringName, cb: Callable) -> void:
     var key = StringName(topic)
-    if not _subs.has(key):
-        _subs[key] = []
-    _subs[key].append(cb)
+    var arr: Array = _subs.get(key, [])
+    if not arr.has(cb):
+        arr.append(cb)
+    _subs[key] = arr
 
 
 func unsub(topic: StringName, cb: Callable) -> void:
