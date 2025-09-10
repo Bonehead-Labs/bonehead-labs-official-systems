@@ -39,7 +39,7 @@ var _id_regex: RegEx
 var _is_saving: bool = false
 var _is_loading: bool = false
 
-# ---- profile management (integrated from ProfileManager) ----
+# ---- profile management ----
 func _ready() -> void:
 	_setup_regex()
 	_setup_directories()
@@ -63,7 +63,7 @@ func _setup_auto_save() -> void:
 	if auto_save_enabled:
 		_auto_save_timer.start()
 
-# ---- Profile Management ----
+
 func _profile_dir(id: String) -> String:
 	return "%s/%s" % [SAVE_ROOT, id]
 
