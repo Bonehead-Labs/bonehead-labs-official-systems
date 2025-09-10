@@ -1,6 +1,6 @@
 # res://core/events/EventTopics.gd
 # Godot 4.x
-class_name _EventTopics
+class_name _EventTopics extends Node
 
 # ───────────────────────────────────────────────────────────────────────────────
 # UI (screen actions, prompts, toasts)

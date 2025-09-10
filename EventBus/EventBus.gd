@@ -64,7 +64,7 @@ func unsub_all(cb: Callable) -> void:
 func _dispatch_catch_all(envelope: Dictionary) -> void:
 	var pruned := false
 	for cb in _catch_all.duplicate():
-		if not cb or not cb.is_valid():
+		if cb == null or not cb.is_valid():
 			pruned = true
 			continue
 		var err = cb.call(envelope)
@@ -78,7 +78,7 @@ func _dispatch_catch_all(envelope: Dictionary) -> void:
 func _cleanup_catch_all_invalid_callables() -> void:
 	var cleaned := []
 	for c in _catch_all:
-		if c and c.is_valid():
+		if c != null and c.is_valid():
 			cleaned.append(c)
 	_catch_all = cleaned
 
@@ -86,7 +86,7 @@ func _cleanup_catch_all_invalid_callables() -> void:
 func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_envelope: bool) -> void:
 	var pruned := false
 	for cb in listeners:
-		if not cb or not cb.is_valid():
+		if cb == null or not cb.is_valid():
 			pruned = true
 			continue
 		var err
@@ -107,7 +107,7 @@ func _cleanup_invalid_callables(key: StringName) -> void:
 	var current: Array = _subs.get(key, [])
 	var cleaned := []
 	for c in current:
-		if c and c.is_valid():
+		if c != null and c.is_valid():
 			cleaned.append(c)
 	if cleaned.is_empty():
 		_subs.erase(key)
