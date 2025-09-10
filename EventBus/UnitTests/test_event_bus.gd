@@ -1,12 +1,10 @@
 extends "res://addons/gut/test.gd"
 
-const _EventBus = preload("res://EventBus/EventBus.gd")
-const _EventTopics = preload("res://EventBus/EventTopics.gd")
 
 var bus: EventBus
 
 func before_each():
-	bus = _EventBus.new()
+	bus = EventBus.new()
 	bus.deferred_mode = false
 	bus.strict_mode = false
 

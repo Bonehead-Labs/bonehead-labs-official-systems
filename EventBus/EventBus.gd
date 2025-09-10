@@ -1,4 +1,4 @@
-class_name EventBus extends Node
+class_name _EventBus extends Node
 
 var _subs: Dictionary = {} #Dictionary[StringName, Array[Callable]]
 var _catch_all: Array[Callable] = []
