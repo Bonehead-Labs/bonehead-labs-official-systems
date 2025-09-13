@@ -1,45 +1,107 @@
 class_name _SaveService extends Node
 
-## Comprehensive Save System for Godot 4
-## Handles profiles, serialization, validation, auto-save, and more
-## Use as singleton autoload: SaveService
+## SaveService (Godot 4)
+## A robust, profile-based save system with JSON serialization,
+## validation, auto-save, checkpoints, and helpful signals.
+##
+## Usage
+## - Add this script as an autoload singleton named `SaveService`.
+## - Implement the save protocol in your game objects:
+##   - `save_data() -> Dictionary`
+##   - `load_data(data: Dictionary) -> bool`
+##   - `get_save_id() -> String`
+##   - `get_save_priority() -> int` (lower saves/loads first)
+## - Optionally, extend the helper interface class `_ISaveable` in
+##   `SaveService/ISaveable.gd` for clearer intent.
+##
+## Notes
+## - This script's class name is `_SaveService` to avoid conflicts in the
+##   editor. Access it via the autoload name `SaveService`.
+## - Save data is stored under `user://saves/<profile>/*.json`.
 
 # ---- signals ----
+## Emitted when the active profile changes.
+## id: The new active profile identifier.
 signal profile_changed(id: String)
+
+## Emitted immediately before a save operation begins.
+## save_id: The save slot/key to write.
 signal before_save(save_id: String)
+
+## Emitted after a save operation completes.
+## save_id: The save slot/key. success: True if save succeeded.
 signal after_save(save_id: String, success: bool)
+
+## Emitted immediately before a load operation begins.
+## save_id: The save slot/key to read.
 signal before_load(save_id: String)
+
+## Emitted after a load operation completes.
+## save_id: The save slot/key. success: True if load succeeded.
 signal after_load(save_id: String, success: bool)
+
+## Emitted when a recoverable error occurs inside the service.
+## code: Short error key. message: Human-readable explanation.
 signal error(code: String, message: String)
+
+## Emitted when a checkpoint is created for the current profile.
+## save_id: The checkpoint name.
 signal checkpoint_created(save_id: String)
+
+## Emitted when the auto-save timer triggers a save attempt.
 signal autosave_triggered()
 
 # ---- constants / config ----
+## Root directory for all profiles and save files.
 const SAVE_ROOT         := "user://saves"
+
+## Reserved filename for storing profile metadata (last save, etc.).
 const PROFILE_FILE      := "profile.json"
+
+## Metadata file tracking last save info per profile.
 const META_FILE         := "meta.json"
+
+## Directory (under a profile) where checkpoints are stored.
 const CHECKPOINT_DIR    := "checkpoints"
+
+## Default filename used by auto-save (stored in the profile root).
 const AUTOSAVE_FILE     := "autosave.json"
 
+## Increment when the save data structure changes to prevent mismatches.
 const SCHEMA_VERSION    := 1
+
+## Optional application version string recorded in save metadata.
 const APP_VERSION       := "0.1.0"
 
 # ---- configuration ----
-var strict_mode: bool = true           
+## When true, validation is strict and operations may fail fast on issues.
+var strict_mode: bool = true
+
+## When true, the service runs an internal timer to auto-save periodically.
 var auto_save_enabled: bool = true
+
+## Number of seconds between auto-save attempts (when enabled).
 var auto_save_interval: float = 300.0  # 5 minutes
+
+## Maximum number of checkpoints to retain per profile (oldest removed first).
 var max_checkpoints: int = 10
 
 # ---- internal state ----
+## Currently active profile id. Must be set before saving/loading.
 var current_profile_id: String = ""
-var _registered_saveables: Array = []  # Array of objects implementing ISaveable interface
+
+## Registered objects that participate in save/load.
+## Each object should implement the save protocol methods listed above.
+var _registered_saveables: Array = []
+
 var _auto_save_timer: Timer
 var _id_regex: RegEx
-# var _save_queue: Array[Dictionary] = []  # Unused for now, reserved for future async saving
+# var _save_queue: Array[Dictionary] = []  # Reserved for potential async pipeline
 var _is_saving: bool = false
 var _is_loading: bool = false
 
-# ---- profile management ----
+# ---- lifecycle / setup ----
+## Initializes internal resources (regex, directories, auto-save timer).
 func _ready() -> void:
 	_setup_regex()
 	_setup_directories()
@@ -70,6 +132,8 @@ func _profile_dir(id: String) -> String:
 func _is_valid_profile_id(id: String) -> bool:
 	return _id_regex.search(id) != null
 
+## Lists existing profile directory names under `SAVE_ROOT`.
+## Returns an empty array if the directory is not accessible.
 func list_profiles() -> PackedStringArray:
 	var profiles := PackedStringArray()
 	var dir := DirAccess.open(SAVE_ROOT)
@@ -86,6 +150,9 @@ func list_profiles() -> PackedStringArray:
 	dir.list_dir_end()
 	return profiles
 
+## Creates (if needed) and switches to a profile.
+## Returns true when the profile is ready and active.
+## In strict mode, profile ids must match: ^[A-Za-z0-9_\-]{1,24}$
 func set_current_profile(id: String) -> bool:
 	if strict_mode and not _is_valid_profile_id(id):
 		emit_signal("error", "INVALID_PROFILE_ID", "Profile ID must be 1-24 chars: A-Z, a-z, 0-9, _, -")
@@ -106,9 +173,12 @@ func set_current_profile(id: String) -> bool:
 	emit_signal("profile_changed", id)
 	return true
 
+## Returns the active profile id, or empty string if none.
 func get_current_profile() -> String:
 	return current_profile_id
 
+## Permanently deletes a profile directory and all contained saves.
+## Returns false if attempting to delete the active profile.
 func delete_profile(id: String) -> bool:
 	if id == current_profile_id:
 		emit_signal("error", "CANNOT_DELETE_ACTIVE", "Cannot delete currently active profile")
@@ -145,7 +215,9 @@ func _delete_directory_recursive(dir: DirAccess) -> void:
 	dir.list_dir_end()
 
 # ---- Saveable Registration ----
-func register_saveable(saveable) -> void:  # saveable should implement ISaveable interface
+## Registers an object to participate in save/load.
+## The object must implement: save_data, load_data, get_save_id, get_save_priority.
+func register_saveable(saveable) -> void:
 	if saveable in _registered_saveables:
 		return
 	
@@ -163,13 +235,16 @@ func register_saveable(saveable) -> void:  # saveable should implement ISaveable
 	
 	_registered_saveables.append(saveable)
 
-func unregister_saveable(saveable) -> void:  # saveable should implement ISaveable interface
+## Unregisters a previously registered saveable object.
+func unregister_saveable(saveable) -> void:
 	_registered_saveables.erase(saveable)
 
-func get_registered_saveables() -> Array:  # Returns Array of objects implementing ISaveable
+## Returns a shallow copy of the registered saveables list.
+func get_registered_saveables() -> Array:
 	return _registered_saveables.duplicate()
 
 # ---- Serialization System ----
+## Internal: Collects and serializes registered saveables into a Dictionary.
 func _serialize_saveables() -> Dictionary:
 	var data := {
 		"meta": {
@@ -207,6 +282,8 @@ func _serialize_saveables() -> Dictionary:
 	
 	return data
 
+## Internal: Applies serialized data to registered saveables.
+## Returns true if all saveables loaded or strict mode is disabled.
 func _deserialize_to_saveables(data: Dictionary) -> bool:
 	if not data.has("saveables"):
 		emit_signal("error", "INVALID_SAVE_FORMAT", "Save data missing 'saveables' section")
@@ -242,6 +319,8 @@ func _deserialize_to_saveables(data: Dictionary) -> bool:
 	return success_count == total_count or not strict_mode
 
 # ---- Save Pipeline ----
+## Saves all registered saveables into `<profile>/<save_id>.json`.
+## Emits `before_save` and `after_save`. Returns true on success.
 func save_game(save_id: String = "main") -> bool:
 	if current_profile_id.is_empty():
 		emit_signal("error", "NO_PROFILE", "No profile selected")
@@ -260,6 +339,7 @@ func save_game(save_id: String = "main") -> bool:
 	emit_signal("after_save", save_id, success)
 	return success
 
+## Internal: Performs the actual file write and metadata update.
 func _perform_save(save_id: String) -> bool:
 	var save_data := _serialize_saveables()
 	var save_path := "%s/%s.json" % [_profile_dir(current_profile_id), save_id]
@@ -278,6 +358,7 @@ func _perform_save(save_id: String) -> bool:
 	
 	return true
 
+## Internal: Updates the profile's `meta.json` with last save info.
 func _save_metadata(save_id: String, meta_data: Dictionary) -> void:
 	var meta_path := "%s/%s" % [_profile_dir(current_profile_id), META_FILE]
 	var existing_meta := {}
@@ -307,6 +388,8 @@ func _save_metadata(save_id: String, meta_data: Dictionary) -> void:
 		write_file.close()
 
 # ---- Load Pipeline ----
+## Loads and applies data from `<profile>/<save_id>.json`.
+## Emits `before_load` and `after_load`. Returns true on success.
 func load_game(save_id: String = "main") -> bool:
 	if current_profile_id.is_empty():
 		emit_signal("error", "NO_PROFILE", "No profile selected")
@@ -325,6 +408,7 @@ func load_game(save_id: String = "main") -> bool:
 	emit_signal("after_load", save_id, success)
 	return success
 
+## Internal: Reads, parses, validates, and dispatches save data by id.
 func _perform_load(save_id: String) -> bool:
 	var save_path := "%s/%s.json" % [_profile_dir(current_profile_id), save_id]
 	
@@ -354,6 +438,7 @@ func _perform_load(save_id: String) -> bool:
 	
 	return _deserialize_to_saveables(save_data)
 
+## Internal: Performs minimal validation against expected schema.
 func _validate_save_data(data: Dictionary) -> bool:
 	if not data.has("meta"):
 		emit_signal("error", "INVALID_SAVE_FORMAT", "Save data missing metadata")
@@ -374,6 +459,7 @@ func _validate_save_data(data: Dictionary) -> bool:
 	return true
 
 # ---- Auto-Save & Checkpoints ----
+## Enables or disables the auto-save timer.
 func enable_auto_save(enabled: bool) -> void:
 	auto_save_enabled = enabled
 	if enabled and _auto_save_timer:
@@ -381,11 +467,13 @@ func enable_auto_save(enabled: bool) -> void:
 	elif _auto_save_timer:
 		_auto_save_timer.stop()
 
+## Sets the auto-save interval in seconds.
 func set_auto_save_interval(seconds: float) -> void:
 	auto_save_interval = seconds
 	if _auto_save_timer:
 		_auto_save_timer.wait_time = seconds
 
+## Internal: Timer callback that triggers an auto-save when possible.
 func _on_auto_save_timeout() -> void:
 	if current_profile_id.is_empty() or _registered_saveables.is_empty():
 		return
@@ -393,6 +481,8 @@ func _on_auto_save_timeout() -> void:
 	emit_signal("autosave_triggered")
 	save_game(AUTOSAVE_FILE.get_basename())  # Save as "autosave"
 
+## Saves a checkpoint under `<profile>/checkpoints/<name>.json`.
+## Generates a timestamp name when none is provided.
 func create_checkpoint(checkpoint_name: String = "") -> bool:
 	if current_profile_id.is_empty():
 		emit_signal("error", "NO_PROFILE", "No profile selected")
@@ -423,6 +513,7 @@ func create_checkpoint(checkpoint_name: String = "") -> bool:
 	emit_signal("checkpoint_created", checkpoint_name)
 	return true
 
+## Lists checkpoint names (without `.json`) for the active profile.
 func list_checkpoints() -> PackedStringArray:
 	var checkpoints := PackedStringArray()
 	if current_profile_id.is_empty():
@@ -443,6 +534,7 @@ func list_checkpoints() -> PackedStringArray:
 	
 	return checkpoints
 
+## Loads a checkpoint by name for the active profile.
 func load_checkpoint(checkpoint_name: String) -> bool:
 	if current_profile_id.is_empty():
 		emit_signal("error", "NO_PROFILE", "No profile selected")
@@ -456,6 +548,7 @@ func load_checkpoint(checkpoint_name: String) -> bool:
 	
 	return _perform_load_from_path(checkpoint_path)
 
+## Internal: Loads data from an explicit file path (used by checkpoints).
 func _perform_load_from_path(file_path: String) -> bool:
 	var file := FileAccess.open(file_path, FileAccess.READ)
 	if file == null:
@@ -477,6 +570,7 @@ func _perform_load_from_path(file_path: String) -> bool:
 	
 	return _deserialize_to_saveables(save_data)
 
+## Internal: Ensures the number of checkpoint files does not exceed the limit.
 func _cleanup_old_checkpoints() -> void:
 	var checkpoint_dir := "%s/%s" % [_profile_dir(current_profile_id), CHECKPOINT_DIR]
 	var dir := DirAccess.open(checkpoint_dir)
@@ -508,12 +602,14 @@ func _cleanup_old_checkpoints() -> void:
 		dir.remove(checkpoint_files[i])
 
 # ---- Utility Functions ----
+## Returns true if `<profile>/<save_id>.json` exists for the active profile.
 func has_save(save_id: String) -> bool:
 	if current_profile_id.is_empty():
 		return false
 	var save_path := "%s/%s.json" % [_profile_dir(current_profile_id), save_id]
 	return FileAccess.file_exists(save_path)
 
+## Deletes `<profile>/<save_id>.json` if it exists. Returns true on success.
 func delete_save(save_id: String) -> bool:
 	if current_profile_id.is_empty():
 		emit_signal("error", "NO_PROFILE", "No profile selected")
@@ -529,6 +625,7 @@ func delete_save(save_id: String) -> bool:
 	
 	return dir.remove("%s.json" % save_id) == OK
 
+## Lists save names (without `.json`) for the active profile.
 func list_saves() -> PackedStringArray:
 	var saves := PackedStringArray()
 	if current_profile_id.is_empty():
@@ -550,12 +647,15 @@ func list_saves() -> PackedStringArray:
 	return saves
 
 # ---- Configuration ----
+## Enables or disables strict validation behavior.
 func set_strict_mode(enabled: bool) -> void:
 	strict_mode = enabled
 
+## Sets the maximum number of retained checkpoints (minimum 1).
 func set_max_checkpoints(count: int) -> void:
 	max_checkpoints = max(1, count)
 
+## Returns a snapshot of internal configuration and state for diagnostics.
 func get_save_statistics() -> Dictionary:
 	return {
 		"current_profile": current_profile_id,
