@@ -3,6 +3,16 @@
 class_name _EventTopics extends Node
 
 # ───────────────────────────────────────────────────────────────────────────────
+# INPUT (actions, axes, devices, rebinding)
+# ───────────────────────────────────────────────────────────────────────────────
+const INPUT_ACTION             : StringName = &"input/action"             # {action, edge:"pressed"|"released", device, ts}
+const INPUT_AXIS               : StringName = &"input/axis"               # {axis, value, device, ts}
+const INPUT_REBIND_STARTED     : StringName = &"input/rebind_started"     # {action}
+const INPUT_REBIND_FINISHED    : StringName = &"input/rebind_finished"    # {action}
+const INPUT_REBIND_FAILED      : StringName = &"input/rebind_failed"      # {action, reason}
+const INPUT_DEVICE_CHANGED     : StringName = &"input/device_changed"     # {device_id, connected, kind}
+
+# ───────────────────────────────────────────────────────────────────────────────
 # UI (screen actions, prompts, toasts)
 # ───────────────────────────────────────────────────────────────────────────────
 const UI_TOAST                : StringName = &"ui/toast"                 # {text, kind?, duration?}
@@ -131,6 +141,10 @@ const DEBUG_LISTENERS_DUMP    : StringName = &"debug/listeners_dump"     # {}
 # Optional: registry for validation / tooling in dev builds
 # ───────────────────────────────────────────────────────────────────────────────
 static var ALL : Array[StringName] = [
+    # input
+    INPUT_ACTION, INPUT_AXIS, INPUT_REBIND_STARTED, INPUT_REBIND_FINISHED,
+    INPUT_REBIND_FAILED, INPUT_DEVICE_CHANGED,
+
     # ui
     UI_TOAST, UI_PROMPT_OPEN, UI_PROMPT_CHOICE, UI_MODAL_OPEN, UI_MODAL_CLOSE,
     UI_SCREEN_PUSHED, UI_SCREEN_POPPED, UI_HUD_SHOW, UI_HUD_HIDE,

@@ -20,6 +20,8 @@ config/icon="uid://c3hfyfmy1awmy"
 EventBus="*res://EventBus/EventBus.gd"
 SaveService="*res://SaveService/SaveService.gd"
 EventTopics="*res://EventBus/EventTopics.gd"
+InputConfig="*res://InputService/InputConfig.gd"
+InputService="*res://InputService/InputService.gd"
 
 [editor_plugins]
 
