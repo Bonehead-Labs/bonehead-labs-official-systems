@@ -1,0 +1,54 @@
+# Contributing
+
+This repository follows the automation safeguards laid out in `AGENTS.md` and the system design in `SOLUTION-DESIGN-DOC.md`. Review both documents before making any changes.
+
+## Workflow Expectations
+
+- Complete work milestone-by-milestone as documented in `docs/MILESTONES.md`.
+- Each TODO bullet corresponds to **one** implementation commit using [Conventional Commits](https://www.conventionalcommits.org/).
+- After finishing every milestone, add a **test-only** commit containing the GUT coverage for that milestone.
+- Keep public APIs at the top of scripts, strongly type parameters/returns, and include docstrings for public methods.
+
+## Conventional Commit Format
+
+```
+<type>(optional-scope): <short description>
+```
+
+Common types:
+
+- `feat`: user-facing or API additions.
+- `fix`: bug fixes or regressions.
+- `chore`: tooling, CI, or repo maintenance.
+- `docs`: documentation updates.
+- `refactor`: internal changes without behaviour differences.
+- `test`: additional automated tests.
+
+Examples:
+
+- `feat(flow): add push_scene API`
+- `test(event-bus): cover duplicated subscribers`
+
+## Local Verification Checklist
+
+Run the headless scripts before committing:
+
+```bash
+scripts/ci/run_format_check.sh
+scripts/ci/run_static_checks.sh
+scripts/ci/run_gut_tests.sh
+```
+
+Set `GODOT_BIN` if the project requires a non-default Godot binary path. Formatting validation requires `gdformat` (from gdtoolkit); the script skips gracefully when it is absent.
+
+## Saving & Autoload Constraints
+
+- Never edit `project.godot` directly; use the provided setup scripts for autoloads/input actions.
+- Scenes should rely on exported `NodePath` references (see `AGENTS.md`).
+- Save logic routes through `SaveService`; other systems expose snapshot hooks only.
+
+## Pull Requests
+
+- Include reasoning for design decisions when deviating from defaults.
+- Reference any new EventBus topics or analytics payloads in module documentation.
+- Keep commits focused; avoid mixing unrelated changes to simplify reviews.
