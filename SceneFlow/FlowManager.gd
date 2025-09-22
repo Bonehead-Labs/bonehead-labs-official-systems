@@ -25,6 +25,8 @@ signal loading_progress(scene_path: String, progress: float, metadata: Dictionar
 signal loading_finished(scene_path: String, handle: FlowAsyncLoader.LoadHandle)
 ## Emitted when an asynchronous load is cancelled.
 signal loading_cancelled(scene_path: String, handle: FlowAsyncLoader.LoadHandle)
+## Emitted when transition playback finishes.
+signal transition_complete(scene_path: String, metadata: Dictionary)
 
 class FlowPayload extends RefCounted:
 	var data: Variant
@@ -59,6 +61,7 @@ var _loading_screen_instance: FlowLoadingScreen = null
 var _transition_library: FlowTransitionLibrary = null
 var _transition_player_scene: PackedScene = null
 var _transition_player: Node = null
+var _transition_metadata: Dictionary = {}
 var _pending_load: FlowAsyncLoader.LoadHandle = null
 var _pending_entry: FlowStackEntry = null
 var _pending_operation: StringName = StringName()
@@ -361,6 +364,8 @@ func _ensure_transition_player() -> void:
     var instance := _transition_player_scene.instantiate()
     _transition_player = instance
     parent.add_child(instance)
+    if _transition_player.has_signal("transition_finished"):
+        _transition_player.transition_finished.connect(_on_transition_finished)
 
 func _play_transition(is_enter: bool, entry: FlowStackEntry) -> void:
     if _transition_library == null:
@@ -372,21 +377,32 @@ func _play_transition(is_enter: bool, entry: FlowStackEntry) -> void:
     _ensure_transition_player()
     if not (_transition_player and _transition_player.has_method("play_transition")):
         return
+    _transition_metadata = {
+        "transition_name": transition.name,
+        "enter": is_enter,
+        "scene_path": entry.scene_path
+    }
     _transition_player.play_transition(transition, is_enter)
 
 func _emit_stack_event(topic: StringName, entry: FlowStackEntry, extra: Dictionary = {}) -> void:
-	if not analytics_enabled:
-		return
-	var payload := {
-		"scene_path": entry.scene_path,
-		"source_scene": entry.payload.source_scene if entry.payload else StringName(),
-		"stack_size": _stack.size(),
-		"timestamp_ms": Time.get_ticks_msec(),
-		"metadata": entry.payload.metadata.duplicate(true) if entry.payload and entry.payload.metadata else {}
-	}
-	for key in extra.keys():
-		payload[key] = extra[key]
-	_emit_analytics(topic, payload)
+    if not analytics_enabled:
+        return
+    var payload := {
+        "scene_path": entry.scene_path,
+        "source_scene": entry.payload.source_scene if entry.payload else StringName(),
+        "stack_size": _stack.size(),
+        "timestamp_ms": Time.get_ticks_msec(),
+        "metadata": entry.payload.metadata.duplicate(true) if entry.payload and entry.payload.metadata else {}
+    }
+    for key in extra.keys():
+        payload[key] = extra[key]
+    _emit_analytics(topic, payload)
+
+func _on_transition_finished(transition: FlowTransition, direction: String) -> void:
+    var metadata := _transition_metadata.duplicate(true)
+    metadata["direction"] = direction
+    metadata["transition_name"] = transition.name
+    transition_complete.emit(StringName(metadata.get("scene_path", "")), metadata)
 
 func _perform_scene_change(packed: PackedScene) -> Error:
 	return get_tree().change_scene_to_packed(packed)
@@ -423,17 +439,21 @@ func clear_loading_screen() -> void:
 	_loading_screen_parent_path = NodePath()
 
 func configure_transition_library(library: FlowTransitionLibrary, player_scene: PackedScene = null) -> void:
-	_transition_library = library
-	_transition_player_scene = player_scene
-	if _transition_player and not is_instance_valid(_transition_player):
-		_transition_player = null
+    _transition_library = library
+    _transition_player_scene = player_scene
+    if _transition_player:
+        if _transition_player.has_signal("transition_finished") and _transition_player.transition_finished.is_connected(_on_transition_finished):
+            _transition_player.transition_finished.disconnect(_on_transition_finished)
+        if is_instance_valid(_transition_player):
+            _transition_player.queue_free()
+        _transition_player = null
 
 func clear_transition_library() -> void:
-	_transition_library = null
-	_transition_player_scene = null
-	if _transition_player and is_instance_valid(_transition_player):
-		_transition_player.queue_free()
-	_transition_player = null
+    _transition_library = null
+    _transition_player_scene = null
+    if _transition_player and is_instance_valid(_transition_player):
+        _transition_player.queue_free()
+    _transition_player = null
 
 func has_pending_load() -> bool:
 	return _pending_load != null and _pending_load.status == FlowAsyncLoader.LoadStatus.LOADING
