@@ -40,6 +40,9 @@ var _stack: Array[FlowStackEntry] = []
 ## When true, FlowManager will publish analytics events to EventBus.
 var analytics_enabled: bool = false
 var _async_loader: FlowAsyncLoader = FlowAsyncLoader.new()
+var _loading_screen_scene: PackedScene = null
+var _loading_screen_parent_path: NodePath = NodePath()
+var _loading_screen_instance: FlowLoadingScreen = null
 
 func _ready() -> void:
 	if _stack.is_empty():
@@ -210,3 +213,15 @@ func _emit_scene_error(scene_path: String, error_code: int, message: String) -> 
 		"stack_size": _stack.size(),
 		"timestamp_ms": Time.get_ticks_msec()
 	})
+func configure_loading_screen(scene: PackedScene, parent_path: NodePath = NodePath()) -> void:
+	_loading_screen_scene = scene
+	_loading_screen_parent_path = parent_path
+	if _loading_screen_instance and not is_instance_valid(_loading_screen_instance):
+		_loading_screen_instance = null
+
+func clear_loading_screen() -> void:
+	if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
+		_loading_screen_instance.queue_free()
+	_loading_screen_instance = null
+	_loading_screen_scene = null
+	_loading_screen_parent_path = NodePath()
