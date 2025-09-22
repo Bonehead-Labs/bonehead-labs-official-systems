@@ -65,6 +65,11 @@ const PLAYER_INTERACTION_LOST : StringName = &"player/interaction_lost" # {inter
 const PLAYER_INTERACTION_EXECUTED : StringName = &"player/interaction_executed" # {interactable_type, interactable_name, interaction_position}
 const PLAYER_ABILITY_USED     : StringName = &"player/ability_used"      # {ability_type, ability_id, data?}
 
+# Combat System Events
+const COMBAT_HURTBOX_HIT      : StringName = &"combat/hurtbox_hit"       # {hurtbox_faction, hitbox_faction, damage_amount, damage_type, source_type, hurtbox_position, hitbox_position, timestamp_ms}
+const COMBAT_HITBOX_ACTIVATED : StringName = &"combat/hitbox_activated"  # {hitbox_faction, damage_amount, damage_type, hitbox_position, timestamp_ms}
+const COMBAT_HITBOX_DEACTIVATED : StringName = &"combat/hitbox_deactivated" # {hitbox_faction, hitbox_position, timestamp_ms}
+
 # ───────────────────────────────────────────────────────────────────────────────
 # ENEMY (spawn, perception, death)
 # ───────────────────────────────────────────────────────────────────────────────
@@ -188,7 +193,8 @@ static var ALL : Array[StringName] = [
     # combat
     COMBAT_HIT, COMBAT_BLOCKED, COMBAT_PARRIED, COMBAT_HEAL, COMBAT_KNOCKBACK,
     COMBAT_STATUS_APPLIED, COMBAT_STATUS_EXPIRED, COMBAT_WEAPON_SWAPPED,
-    COMBAT_PROJECTILE_FIRED, COMBAT_PROJECTILE_HIT,
+    COMBAT_PROJECTILE_FIRED, COMBAT_PROJECTILE_HIT, COMBAT_HURTBOX_HIT,
+    COMBAT_HITBOX_ACTIVATED, COMBAT_HITBOX_DEACTIVATED,
 
     # scene
     SCENE_WILL_CHANGE, SCENE_DID_CHANGE, SCENE_RELOADED, SCENE_CHECKPOINT_REACHED,

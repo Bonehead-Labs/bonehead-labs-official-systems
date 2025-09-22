@@ -8,6 +8,8 @@ The Combat System consists of:
 
 - **DamageInfo**: Resource for damage/healing data with type support
 - **HealthComponent**: Node for managing health, invulnerability, and combat events
+- **HurtboxComponent**: Areas that can receive damage from hitboxes
+- **HitboxComponent**: Areas that can deal damage to hurtboxes
 - **Combat utilities**: Damage calculation, invulnerability windows, status effects
 
 ## Features
@@ -90,6 +92,232 @@ var healing := DamageInfo.create_healing(20.0, self)
 - **POISON**: Poison/DoT damage
 - **TRUE**: Bypasses all resistances and invulnerability
 - **HEALING**: Healing amount (negative damage)
+
+## Hitbox/Hurtbox Framework
+
+The hitbox/hurtbox system provides collision-based damage detection using Area2D nodes.
+
+### HurtboxComponent
+
+Hurtboxes define areas on entities that can receive damage. They automatically connect to HealthComponent and apply damage when overlapping with active hitboxes.
+
+```gdscript
+# Attach to player/enemy
+var hurtbox := HurtboxComponent.new()
+hurtbox.faction = "player"
+hurtbox.friendly_fire = false
+hurtbox.immune_factions = ["player"]  # Immune to other players
+entity.add_child(hurtbox)
+
+# Connect signals
+hurtbox.damage_taken.connect(_on_damage_taken)
+```
+
+#### Hurtbox Properties
+
+```gdscript
+@export var health_component_path: NodePath = ^".."  # Path to HealthComponent
+@export var faction: String = "neutral"              # Entity faction
+@export var enabled: bool = true                      # Enable/disable hurtbox
+@export var friendly_fire: bool = false               # Allow same-faction damage
+@export var immune_factions: Array[String] = []       # Factions that cannot damage
+```
+
+#### Hurtbox Signals
+
+```gdscript
+hurtbox.hurtbox_hit.connect(func(hitbox, damage_info):
+    # Damage was applied
+    camera_shake(damage_info.amount)
+)
+
+hurtbox.damage_taken.connect(func(amount, source, damage_info):
+    # React to damage
+    play_hurt_sound()
+    show_damage_numbers(amount)
+)
+```
+
+### HitboxComponent
+
+Hitboxes define areas that deal damage to overlapping hurtboxes. They must be activated to deal damage and can have configurable damage parameters.
+
+```gdscript
+# Attach to weapon/projectile
+var hitbox := HitboxComponent.new()
+hitbox.faction = "enemy"
+hitbox.damage_amount = 25.0
+hitbox.damage_type = DamageInfo.DamageType.PHYSICAL
+hitbox.activation_duration = 0.3  # Active for 0.3 seconds
+weapon.add_child(hitbox)
+
+# Activate during attack
+hitbox.activate()
+```
+
+#### Hitbox Properties
+
+```gdscript
+@export var faction: String = "neutral"              # Source faction
+@export var damage_amount: float = 10.0              # Damage amount
+@export var damage_type: DamageType = PHYSICAL       # Damage type
+@export var source_node_path: NodePath = ^".."       # Path to source entity
+@export var knockback_force: Vector2 = Vector2.ZERO  # Knockback vector
+@export var knockback_duration: float = 0.2          # Knockback duration
+@export var auto_activate: bool = false              # Auto-activate on ready
+@export var activation_duration: float = 0.5         # How long hitbox stays active
+```
+
+#### Hitbox Activation
+
+```gdscript
+# Manual activation
+hitbox.activate()
+
+# Check if active
+if hitbox.is_active():
+    print("Hitbox is dealing damage!")
+
+# Deactivate early
+hitbox.deactivate()
+
+# Get activation progress (0.0 to 1.0)
+var progress := hitbox.get_activation_progress()
+```
+
+### Collision Filtering
+
+The system supports faction-based damage filtering:
+
+```gdscript
+# Hurtbox configuration
+hurtbox.faction = "player"
+hurtbox.friendly_fire = false      # Don't damage other players
+hurtbox.immune_factions = ["ally"] # Immune to allies
+
+# Check compatibility
+if hurtbox.can_take_damage_from_faction("enemy"):
+    print("Can be damaged by enemies")
+```
+
+### Event Integration
+
+All hitbox/hurtbox interactions publish EventBus events:
+
+```gdscript
+# Subscribe to combat events
+EventBus.sub(EventTopics.COMBAT_HURTBOX_HIT, _on_hurtbox_hit)
+EventBus.sub(EventTopics.COMBAT_HITBOX_ACTIVATED, _on_hitbox_activated)
+
+func _on_hurtbox_hit(payload: Dictionary) -> void:
+    # Analytics: hurtbox faction, hitbox faction, damage amount, positions
+    print("Damage dealt: ", payload.damage_amount, " from ", payload.hitbox_faction, " to ", payload.hurtbox_faction)
+
+func _on_hitbox_activated(payload: Dictionary) -> void:
+    # Analytics: hitbox activated with damage info
+    print("Hitbox activated: ", payload.damage_amount, " damage")
+```
+
+### Setup Examples
+
+#### Player Hurtbox
+
+```gdscript
+# Player.gd
+func _ready():
+    # Add HealthComponent
+    var health := HealthComponent.new()
+    health.max_health = 100.0
+    add_child(health)
+
+    # Add HurtboxComponent
+    var hurtbox := HurtboxComponent.new()
+    hurtbox.faction = "player"
+    hurtbox.friendly_fire = false
+    add_child(hurtbox)
+
+    # Connect to body (CircleShape2D)
+    var shape := CircleShape2D.new()
+    shape.radius = 16.0
+    var collision := CollisionShape2D.new()
+    collision.shape = shape
+    hurtbox.add_child(collision)
+```
+
+#### Enemy Hitbox
+
+```gdscript
+# EnemyAttack.gd
+func perform_attack():
+    # Create hitbox for attack
+    var hitbox := HitboxComponent.new()
+    hitbox.faction = "enemy"
+    hitbox.damage_amount = 15.0
+    hitbox.activation_duration = 0.4
+    hitbox.knockback_force = Vector2(50, -20)
+
+    # Add collision shape
+    var shape := RectangleShape2D.new()
+    shape.size = Vector2(32, 16)
+    var collision := CollisionShape2D.new()
+    collision.shape = shape
+    collision.position = Vector2(16, 0)  # Offset in front
+    hitbox.add_child(collision)
+
+    add_child(hitbox)
+    hitbox.activate()
+
+    # Clean up after attack
+    await get_tree().create_timer(0.5).timeout
+    hitbox.queue_free()
+```
+
+#### Projectile Hitbox
+
+```gdscript
+# Projectile.gd
+func _ready():
+    var hitbox := HitboxComponent.new()
+    hitbox.faction = "enemy"
+    hitbox.damage_amount = 20.0
+    hitbox.activation_duration = 10.0  # Active while projectile exists
+    hitbox.auto_activate = true
+
+    # Add collision shape
+    var shape := CircleShape2D.new()
+    shape.radius = 4.0
+    var collision := CollisionShape2D.new()
+    collision.shape = shape
+    hitbox.add_child(collision)
+
+    add_child(hitbox)
+```
+
+### Best Practices
+
+#### Hurtbox Setup
+- Attach hurtboxes to entities that have HealthComponent
+- Use appropriate collision shapes (circle for characters, rectangles for objects)
+- Configure faction settings for proper damage filtering
+- Connect to signals for visual/audio feedback
+
+#### Hitbox Setup
+- Attach hitboxes to weapons, projectiles, or attack areas
+- Set appropriate activation duration for attack timing
+- Configure damage and knockback for attack strength
+- Use auto-activate for persistent hitboxes (projectiles)
+
+#### Performance
+- Hurtboxes monitor, hitboxes are monitorable
+- Only active hitboxes deal damage
+- Damage tracking prevents multi-hits per activation
+- EventBus events include position data for spatial queries
+
+#### Debugging
+- Use EventBus inspector to monitor hitbox/hurtbox events
+- Check faction compatibility with `can_take_damage_from_faction()`
+- Verify collision shapes don't overlap unintentionally
+- Monitor activation states with `is_active()`
 
 ## HealthComponent API
 

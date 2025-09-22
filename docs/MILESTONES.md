@@ -104,10 +104,10 @@
 - [x] Document core combat API, analytics hooks, and usage patterns.
 
 ### Milestone 2: Hitbox/Hurtbox Framework
-- [ ] Build components for hitboxes/hurtboxes leveraging Area2D/3D where relevant.
-- [ ] Implement collision filtering with faction/team tags.
-- [ ] Emit contact events via EventBus for analytics/debug tooling.
-- [ ] Provide setup guidance for attaching hitboxes to scenes.
+- [x] Build components for hitboxes/hurtboxes leveraging Area2D/3D where relevant.
+- [x] Implement collision filtering with faction/team tags.
+- [x] Emit contact events via EventBus for analytics/debug tooling.
+- [x] Provide setup guidance for attaching hitboxes to scenes.
 
 ### Milestone 3: Knockback, Stagger, Status Effects
 - [ ] Implement knockback resolver applying physics impulses respecting mass.
