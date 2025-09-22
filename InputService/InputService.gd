@@ -323,7 +323,7 @@ func _deserialize_event(d: Dictionary) -> InputEvent:
     match t:
         "key":
             var k := InputEventKey.new()
-            k.keycode = int(d.get("keycode", 0))
+            k.keycode = int(d.get("keycode", 0)) as Key
             k.shift_pressed = bool(d.get("shift", false))
             k.ctrl_pressed = bool(d.get("ctrl", false))
             k.alt_pressed = bool(d.get("alt", false))
@@ -331,11 +331,11 @@ func _deserialize_event(d: Dictionary) -> InputEvent:
             return k
         "mouse_button":
             var m := InputEventMouseButton.new()
-            m.button_index = int(d.get("button_index", 0))
+            m.button_index = int(d.get("button_index", 0)) as MouseButton
             return m
         "joy_button":
             var j := InputEventJoypadButton.new()
-            j.button_index = int(d.get("button_index", 0))
+            j.button_index = int(d.get("button_index", 0)) as JoyButton
             return j
         "text":
             return null
