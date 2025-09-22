@@ -122,10 +122,10 @@
 - [ ] Document extending projectile behaviours and faction setup with pooling considerations.
 
 ### Milestone 5: Death Handling & Integration
-- [ ] Provide death handler callbacks (death animation, loot events).
-- [ ] Emit analytics/debug info through EventBus (opt-in).
-- [ ] Hook into FlowManager/World for respawn logic where applicable.
-- [ ] Document lifecycle expectations for systems consuming combat events.
+- [x] Provide death handler callbacks (death animation, loot events).
+- [x] Emit analytics/debug info through EventBus (opt-in).
+- [x] Hook into FlowManager/World for respawn logic where applicable.
+- [x] Document lifecycle expectations for systems consuming combat events.
 
 ## Enemy AI (2D)
 
