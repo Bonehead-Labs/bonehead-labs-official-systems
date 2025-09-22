@@ -1,6 +1,5 @@
 extends "res://addons/gut/test.gd"
 
-const ControllerPath: String = "res://PlayerController/PlayerController.gd"
 const ConfigPath: String = "res://PlayerController/default_movement.tres"
 
 class TestController extends _PlayerController2D:
@@ -20,8 +19,8 @@ class EventBusStub extends Node:
 
 func before_each() -> void:
     controller = TestController.new()
-    config = load(ConfigPath)
-    controller.movement_config = config
+    config = (load(ConfigPath) as MovementConfig).duplicate_config()
+    controller.set_config(config)
     controller.enable_manual_input(true)
     controller.name = "PlayerController"
     event_bus = EventBusStub.new()
@@ -38,18 +37,51 @@ func after_each() -> void:
         controller.queue_free()
         await get_tree().process_frame
 
-func test_manual_horizontal_acceleration() -> void:
-    controller.set_manual_input(Vector2.RIGHT)
-    controller._apply_horizontal(0.1)
-    assert_gt(controller.get_velocity().x, 0.0)
+func _physics_steps(frames: int = 1, delta: float = 0.016) -> void:
+    for i in range(frames):
+        controller._process(delta)
+        controller._physics_process(delta)
 
-func test_jump_uses_coyote_and_buffer() -> void:
-    controller.movement_config.jump_velocity = -300.0
-    controller._coyote_timer = controller.movement_config.coyote_time
-    controller._jump_buffer_timer = controller.movement_config.jump_buffer_time
+func test_platformer_moves_from_idle_to_move() -> void:
     controller.floor_override = true
-    controller._apply_vertical(0.016)
-    assert_eq(controller.get_velocity().y, controller.movement_config.jump_velocity)
+    controller.set_manual_input(Vector2.RIGHT)
+    _physics_steps(5)
+    assert_eq(controller.get_current_state(), StringName("move"))
+    assert_gt(controller.get_motion_velocity().x, 0.0)
+
+func test_jump_transitions_through_air_states() -> void:
+    controller.floor_override = true
+    controller.set_manual_input(Vector2.ZERO)
+    controller.movement_config.jump_velocity = -300.0
+    controller.refresh_coyote_timer()
+    var jump_event := InputEventAction.new()
+    jump_event.action = controller.movement_config.jump_action
+    controller._on_action_event(controller.movement_config.jump_action, "pressed", 0, jump_event)
+    _physics_steps(1)
+    assert_eq(controller.get_current_state(), StringName("jump"))
+    assert_eq(controller.get_motion_velocity().y, controller.movement_config.jump_velocity)
+    controller.floor_override = false
+    _physics_steps(12)
+    assert_eq(controller.get_current_state(), StringName("fall"))
+    controller.floor_override = true
+    _physics_steps(2)
+    assert_eq(controller.get_current_state(), StringName("idle"))
+
+func test_top_down_movement_uses_move_state_and_diagonal_velocity() -> void:
+    controller.movement_config.movement_mode = MovementConfig.MovementMode.TOP_DOWN
+    controller.movement_config.allow_jump = false
+    controller.movement_config.allow_vertical_input = true
+    controller.set_config(controller.movement_config)
+    controller.set_manual_input(Vector2(1.0, -1.0).normalized())
+    _physics_steps(6)
+    assert_eq(controller.get_current_state(), StringName("move"))
+    var velocity := controller.get_motion_velocity()
+    assert_gt(velocity.x, 0.0)
+    assert_lt(velocity.y, 0.0)
+    assert_ne(controller.transition_to_state(StringName("jump")), OK)
+    controller.set_manual_input(Vector2.ZERO)
+    _physics_steps(4)
+    assert_eq(controller.get_current_state(), StringName("idle"))
 
 func test_spawn_emits_signal() -> void:
     var called := false
