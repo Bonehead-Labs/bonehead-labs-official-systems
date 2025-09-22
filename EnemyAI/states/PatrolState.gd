@@ -3,6 +3,9 @@ extends FSMState
 
 ## State for enemy patrol behavior - moves between waypoints.
 
+const EnemyBase = preload("../EnemyBase.gd")
+const EnemyConfig = preload("../EnemyConfig.gd")
+
 var _enemy: EnemyBase
 var _config: EnemyConfig
 var _waypoints: Array[Vector2] = []

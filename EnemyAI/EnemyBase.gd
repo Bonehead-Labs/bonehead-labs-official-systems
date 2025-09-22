@@ -4,13 +4,13 @@ extends CharacterBody2D
 ## Base class for 2D enemies leveraging the shared FSM system.
 ## Provides common functionality for movement, combat, and AI behavior.
 
-const EventTopics = preload("res://EventBus/EventTopics.gd")
 const EnemyConfigScript = preload("res://EnemyAI/EnemyConfig.gd")
 const StateMachineScript = preload("res://systems/fsm/StateMachine.gd")
 const HealthComponentScript = preload("res://Combat/HealthComponent.gd")
 const HurtboxComponentScript = preload("res://Combat/HurtboxComponent.gd")
 const HitboxComponentScript = preload("res://Combat/HitboxComponent.gd")
 const DeathHandlerScript = preload("res://Combat/DeathHandler.gd")
+const DamageInfoScript = preload("res://Combat/DamageInfo.gd")
 
 signal spawned(enemy: EnemyBase, spawn_position: Vector2)
 signal alerted(enemy: EnemyBase, alert_target: Node2D)
@@ -272,10 +272,10 @@ func play_animation(animation: String, speed: float = 1.0) -> void:
         sprite.speed_scale = speed * (config.animation_speed if config else 1.0)
         sprite.play(animation)
 
-func flip_sprite_to_face(position: Vector2) -> void:
+func flip_sprite_to_face(target_position: Vector2) -> void:
     var sprite = get_node_or_null("AnimatedSprite2D")
     if sprite:
-        sprite.flip_h = position.x < global_position.x
+        sprite.flip_h = target_position.x < global_position.x
 
 ## Analytics
 func _emit_analytics_event(event_type: String, data: Dictionary) -> void:
