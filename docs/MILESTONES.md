@@ -47,10 +47,10 @@
 - [x] Supply per-widget README with usage snippets and analytics opt-in guidance.
 
 ### Milestone 3: Screen Manager & Navigation
-- [ ] Create `UIScreenManager` responsible for title/pause/options/etc. with scene composition.
-- [ ] Implement stack-based navigation with animated show/hide powered by transition library.
-- [ ] Expose signals for screen opened/closed and integrate with EventBus topics, including analytics events.
-- [ ] Document how to register new screens and wire InputService actions and localization keys.
+- [x] Create `UIScreenManager` responsible for title/pause/options/etc. with scene composition.
+- [x] Implement stack-based navigation with animated show/hide powered by transition library.
+- [x] Expose signals for screen opened/closed and integrate with EventBus topics, including analytics events.
+- [x] Document how to register new screens and wire InputService actions and localization keys.
 
 ### Milestone 4: HUD Shell & Input Glyphs
 - [ ] Provide HUD root scene with pluggable panels (health, inventory prompts, quest log stubs).

@@ -37,3 +37,4 @@ All widgets subscribe to `ThemeService.theme_changed` so they react to palette u
 - Register screens via `register_screen(id, scene)` and navigate with `push_screen`, `replace_screen`, `pop_screen`.
 - Integrates with the shared transition library when a transition player is supplied.
 - Publishes `UI_SCREEN_PUSHED` / `UI_SCREEN_POPPED` EventBus topics when available.
+- Screens receive context via `receive_context`, `on_screen_entered`, `on_screen_exited`. Wire `InputService` actions inside these callbacks to react to user input, and use localization tokens for UI copy.
