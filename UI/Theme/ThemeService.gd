@@ -7,6 +7,8 @@ extends Node
 var _tokens: ThemeTokens
 var _use_high_contrast: bool = false
 var _focus_style_cache: StyleBox = null
+const DEFAULT_FOCUS_PATH: String = "res://UI/Theme/focus_outline_default.tres"
+const HIGH_CONTRAST_FOCUS_PATH: String = "res://UI/Theme/focus_outline_high_contrast.tres"
 
 func _ready() -> void:
     load_tokens("res://UI/Theme/default_theme.tokens.tres")
@@ -56,11 +58,17 @@ func get_font_path() -> String:
 func get_focus_stylebox() -> StyleBox:
     if _focus_style_cache:
         return _focus_style_cache
-    var style := StyleBoxFlat.new()
-    var outline_color := _tokens.get_focus_color(_use_high_contrast) if _tokens else Color(0.5, 0.5, 1.0)
-    style.set_border_width_all(int(_tokens.get_focus_outline_width() if _tokens else 2.0))
-    style.set_border_color(outline_color)
-    style.draw_center = false
-    style.set_corner_radius_all(int(_tokens.get_focus_corner_radius() if _tokens else 4.0))
-    _focus_style_cache = style
+    var resource_path := HIGH_CONTRAST_FOCUS_PATH if _use_high_contrast else DEFAULT_FOCUS_PATH
+    if ResourceLoader.exists(resource_path):
+        var style := ResourceLoader.load(resource_path)
+        if style is StyleBox:
+            _focus_style_cache = style
+    if _focus_style_cache == null:
+        var style := StyleBoxFlat.new()
+        var outline_color := _tokens.get_focus_color(_use_high_contrast) if _tokens else Color(0.5, 0.5, 1.0)
+        style.set_border_width_all(int(_tokens.get_focus_outline_width() if _tokens else 2.0))
+        style.set_border_color(outline_color)
+        style.draw_center = false
+        style.set_corner_radius_all(int(_tokens.get_focus_corner_radius() if _tokens else 4.0))
+        _focus_style_cache = style
     return _focus_style_cache
