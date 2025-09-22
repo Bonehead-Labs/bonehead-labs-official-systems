@@ -73,22 +73,22 @@
 - [x] Provide README outlining config tuning workflow and deterministic seeding considerations with `RNGService`.
 
 ### Milestone 2: Generic FSM Framework
-- [ ] Author shared FSM module (states, transitions, context) reusable by enemies (see Cross-Cutting Modules: FSM Toolkit).
-- [ ] Port player controller logic to FSM states (idle, move, jump, fall).
-- [ ] Document state lifecycle and hooks for ability modules.
-- [ ] Add minimal tooling to visualize current state via debug overlay integration point.
+- [x] Author shared FSM module (states, transitions, context) reusable by enemies (see Cross-Cutting Modules: FSM Toolkit).
+- [x] Port player controller logic to FSM states (idle, move, jump, fall).
+- [x] Document state lifecycle and hooks for ability modules.
+- [x] Add minimal tooling to visualize current state via debug overlay integration point.
 
 ### Milestone 3: Animation Driver & Camera Rig
-- [ ] Wire AnimationPlayer/AnimatedSprite2D to FSM state changes with typed mappings.
-- [ ] Build configurable camera rig scene (follow smoothing, lookahead).
-- [ ] Expose hooks for cutscenes and FlowManager transitions.
-- [ ] Document animation setup requirements and camera attach instructions.
+- [x] Wire AnimationPlayer/AnimatedSprite2D to FSM state changes with typed mappings.
+- [x] Build configurable camera rig scene (follow smoothing, lookahead).
+- [x] Expose hooks for cutscenes and FlowManager transitions.
+- [x] Document animation setup requirements and camera attach instructions.
 
 ### Milestone 4: Interaction & Ability Shell
-- [ ] Implement interactable detector using Area2D and filtered groups.
-- [ ] Create ability system interface allowing modular abilities to register with the FSM.
-- [ ] Emit interaction signals and integrate with EventBus topics for prompts and analytics.
-- [ ] Provide example ability scripts and documentation.
+- [x] Implement interactable detector using Area2D and filtered groups.
+- [x] Create ability system interface allowing modular abilities to register with the FSM.
+- [x] Emit interaction signals and integrate with EventBus topics for prompts and analytics.
+- [x] Provide example ability scripts and documentation.
 
 ### Milestone 5: Combat Hooks & Save Integration
 - [ ] Add damage intake methods forwarding to Combat system via signals.
