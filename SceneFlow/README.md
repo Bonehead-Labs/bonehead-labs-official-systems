@@ -13,11 +13,23 @@
 All functions are strongly typed and return `Error` codes when appropriate.
 
 - `push_scene(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error`
-  - Loads the new scene, appends it to the stack, and forwards payload metadata.
+  - Loads the new scene synchronously, appends it to the stack, and forwards payload metadata.
 - `replace_scene(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error`
-  - Swaps the active scene without altering stack depth.
+  - Swaps the active scene synchronously without altering stack depth.
 - `pop_scene(payload_data: Variant = null, metadata: Dictionary = {}) -> Error`
   - Returns to the previous stack entry, optionally providing a payload to the restored scene.
+- `push_scene_async(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error`
+  - Starts an asynchronous scene load using `FlowAsyncLoader`; completion is signalled via `loading_finished`.
+- `replace_scene_async(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error`
+  - Asynchronous replacement that keeps the current scene active until loading succeeds.
+- `cancel_pending_load() -> void`
+  - Cancels the current asynchronous load (if any) and emits `loading_cancelled`.
+- `has_pending_load() -> bool`
+  - Returns `true` when FlowManager is processing an asynchronous load.
+- `configure_loading_screen(scene: PackedScene, parent_path: NodePath = NodePath()) -> void`
+  - Registers a loading screen scene (must extend `FlowLoadingScreen`) and optional parent attachment path.
+- `clear_loading_screen() -> void`
+  - Removes previously configured loading screen data and frees any instantiated instance.
 - `peek_scene() -> FlowStackEntry`
   - Returns the active stack entry (scene path + payload metadata).
 - `clear_stack(keep_active: bool = true) -> void`
@@ -42,8 +54,41 @@ Destination scenes can implement an optional `receive_flow_payload(payload: Flow
 - `about_to_change(scene_path: String, entry: FlowStackEntry)`
 - `scene_changed(scene_path: String, entry: FlowStackEntry)`
 - `scene_error(scene_path: String, error_code: int, message: String)`
+- `loading_started(scene_path: String, handle: FlowAsyncLoader.LoadHandle)`
+- `loading_progress(scene_path: String, progress: float, metadata: Dictionary)`
+- `loading_finished(scene_path: String, handle: FlowAsyncLoader.LoadHandle)`
+- `loading_cancelled(scene_path: String, handle: FlowAsyncLoader.LoadHandle)`
 
 Use signals to drive loading screens, transition effects, or error telemetry.
+
+## Asynchronous Loading
+
+`FlowAsyncLoader` powers the asynchronous API surface. Pending loads expose deterministic seed snapshots (via an optional `RNGService.snapshot_seed` hook), progress reporting, and cancellation safeguards.
+
+- Call `push_scene_async` / `replace_scene_async` to enqueue a load.
+- Observe `loading_progress` for 0.0–1.0 updates (forwarded to any configured `FlowLoadingScreen`).
+- Cancel via `cancel_pending_load` when needed (e.g., user aborted navigation).
+
+### Loading Screen Contract
+
+Create a scene that extends `FlowLoadingScreen` to participate in the lifecycle:
+
+```gdscript
+func begin_loading(handle: FlowAsyncLoader.LoadHandle) -> void
+func update_progress(progress: float, metadata: Dictionary) -> void
+func finish_loading(success: bool, metadata: Dictionary = {}) -> void
+```
+
+Register it using `configure_loading_screen(scene, parent_path)`. FlowManager instantiates the scene once and attaches it either to the supplied `parent_path` or the current scene/root. The instance receives lifecycle callbacks and is freed automatically after successful completion.
+
+### Failure Handling
+
+If an async load fails (or the activated scene returns an error):
+
+- FlowManager leaves the previous stack entry active (reinstating replacements).
+- `scene_error` is emitted with the relevant error code.
+- Analytics dispatch `FLOW_LOADING_FAILED` with error context.
+- The loading screen receives `finish_loading(false, ...)` enabling custom messaging.
 
 ## Analytics Topics
 
@@ -53,6 +98,11 @@ When `analytics_enabled` is `true`, FlowManager publishes structured payloads to
 - `EventTopics.FLOW_SCENE_REPLACED`
 - `EventTopics.FLOW_SCENE_POPPED`
 - `EventTopics.FLOW_SCENE_ERROR`
+- `EventTopics.FLOW_LOADING_STARTED`
+- `EventTopics.FLOW_LOADING_PROGRESS`
+- `EventTopics.FLOW_LOADING_COMPLETED`
+- `EventTopics.FLOW_LOADING_FAILED`
+- `EventTopics.FLOW_LOADING_CANCELLED`
 
 Each payload includes `scene_path`, `source_scene`, `stack_size`, `payload metadata`, and a timestamp, plus context (e.g., `previous_scene`, `popped_scene`). Gate analytics behind user consent via `SettingsService`.
 
