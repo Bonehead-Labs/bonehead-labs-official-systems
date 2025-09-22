@@ -40,6 +40,7 @@ const FLOW_LOADING_PROGRESS   : StringName = &"flow/loading_progress"    # {scen
 const FLOW_LOADING_COMPLETED  : StringName = &"flow/loading_completed"   # {scene_path, operation, duration_ms?, metadata?}
 const FLOW_LOADING_FAILED     : StringName = &"flow/loading_failed"      # {scene_path, operation, error, metadata?}
 const FLOW_LOADING_CANCELLED  : StringName = &"flow/loading_cancelled"   # {scene_path, operation}
+const FLOW_TRANSITION_COMPLETED : StringName = &"flow/transition_completed" # {scene_path, transition_name, direction, metadata?}
 
 # ───────────────────────────────────────────────────────────────────────────────
 # PLAYER (player-related events)
@@ -166,7 +167,7 @@ static var ALL : Array[StringName] = [
     # scene flow
     FLOW_SCENE_PUSHED, FLOW_SCENE_REPLACED, FLOW_SCENE_POPPED, FLOW_SCENE_ERROR,
     FLOW_LOADING_STARTED, FLOW_LOADING_PROGRESS, FLOW_LOADING_COMPLETED,
-    FLOW_LOADING_FAILED, FLOW_LOADING_CANCELLED,
+    FLOW_LOADING_FAILED, FLOW_LOADING_CANCELLED, FLOW_TRANSITION_COMPLETED,
 
     # player
     PLAYER_SPAWNED, PLAYER_DESPAWNED, PLAYER_DAMAGED, PLAYER_HEALED, PLAYER_DIED,

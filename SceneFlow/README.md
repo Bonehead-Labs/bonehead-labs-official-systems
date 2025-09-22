@@ -90,6 +90,24 @@ If an async load fails (or the activated scene returns an error):
 - Analytics dispatch `FLOW_LOADING_FAILED` with error context.
 - The loading screen receives `finish_loading(false, ...)` enabling custom messaging.
 
+## Transition FX
+
+Configure the shared transition library to re-use the same resources across FlowManager and UI navigation.
+
+```gdscript
+var library := load("res://SceneFlow/Transitions/MyTransitions.tres")
+var player_scene := load("res://SceneFlow/Transitions/TransitionPlayer.tscn")
+FlowManager.configure_transition_library(library, player_scene)
+```
+
+Set the desired transition per operation by embedding metadata in the payload:
+
+```gdscript
+FlowManager.push_scene_async("res://scenes/Level01.tscn", null, {"transition": "warp"})
+```
+
+Transitions emit `transition_complete` when playback (enter/exit) finishes and, when analytics are enabled, publish `FLOW_TRANSITION_COMPLETED` diagnostics.
+
 ## Analytics Topics
 
 When `analytics_enabled` is `true`, FlowManager publishes structured payloads to `EventBus` using the following topics:
@@ -103,6 +121,7 @@ When `analytics_enabled` is `true`, FlowManager publishes structured payloads to
 - `EventTopics.FLOW_LOADING_COMPLETED`
 - `EventTopics.FLOW_LOADING_FAILED`
 - `EventTopics.FLOW_LOADING_CANCELLED`
+- `EventTopics.FLOW_TRANSITION_COMPLETED`
 
 Each payload includes `scene_path`, `source_scene`, `stack_size`, `payload metadata`, and a timestamp, plus context (e.g., `previous_scene`, `popped_scene`). Gate analytics behind user consent via `SettingsService`.
 

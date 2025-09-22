@@ -403,6 +403,8 @@ func _on_transition_finished(transition: FlowTransition, direction: String) -> v
     metadata["direction"] = direction
     metadata["transition_name"] = transition.name
     transition_complete.emit(StringName(metadata.get("scene_path", "")), metadata)
+    if analytics_enabled:
+        _emit_analytics(EventTopics.FLOW_TRANSITION_COMPLETED, metadata)
 
 func _perform_scene_change(packed: PackedScene) -> Error:
 	return get_tree().change_scene_to_packed(packed)
