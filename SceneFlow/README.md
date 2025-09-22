@@ -113,6 +113,16 @@ FlowManager.push_scene_async("res://scenes/Level01.tscn", null, {"transition": "
 
 Transitions emit `transition_complete` when playback (enter/exit) finishes and, when analytics are enabled, publish `FLOW_TRANSITION_COMPLETED` diagnostics.
 
+## World & Save Hooks
+
+- `configure_checkpoint_manager({"node": checkpoint_manager, "method": "on_scene_transition"})`
+  - Registers a checkpoint manager interface. FlowManager calls the supplied method after each successful scene change (push, replace, pop, async).
+- `configure_save_on_transition({"enabled": true, "save_id": "flow_autosave", "settings_key": &"flow/autosave"})`
+  - Requests `SaveService.save_game(save_id)` before unloading the active scene when the optional settings gate permits it.
+- `clear_checkpoint_manager()` / `clear_save_on_transition()` reset the integrations.
+
+Both integrations are skipped in editor contexts. The checkpoint payload includes `operation`, `scene_path`, `previous_scene`, and duplicated metadata dictionaries for further processing.
+
 ## Analytics Topics
 
 When `analytics_enabled` is `true`, FlowManager publishes structured payloads to `EventBus` using the following topics:
