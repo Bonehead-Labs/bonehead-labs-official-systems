@@ -21,3 +21,12 @@
 - The focus stylebox automatically adapts when high contrast mode changes.
 - Consumers can check `ThemeService.is_high_contrast_enabled()` to adjust additional visuals.
 - Use `ThemeLocalization.translate(token, fallback)` to fetch UI copy while providing deterministic defaults when translations are missing.
+
+## Widget Library
+
+Reusable controls live under `res://UI/Widgets/`:
+
+- `BaseButton.gd`, `BaseToggle.gd`, `BaseSlider.gd`, `ThemedLabel.gd`
+- `WidgetFactory.gd` exposes `create_button`, `create_toggle`, `create_slider`, and `create_label`
+
+All widgets subscribe to `ThemeService.theme_changed` so they react to palette updates and high-contrast toggles automatically.
