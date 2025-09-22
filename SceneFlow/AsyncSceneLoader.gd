@@ -12,7 +12,6 @@ enum LoadStatus {
 class LoadHandle extends RefCounted:
     var scene_path: String
     var status: LoadStatus = LoadStatus.IDLE
-    var request_id: int = -1
     var progress: float = 0.0
     var error: Error = OK
     var result: PackedScene = null
@@ -35,43 +34,44 @@ func start(scene_path: String, metadata: Dictionary = {}) -> LoadHandle:
         handle.status = LoadStatus.FAILED
         handle.error = err
         return handle
-    handle.request_id = ResourceLoader.get_threaded_request_id(scene_path)
     handle.status = LoadStatus.LOADING
-    _handles[handle.request_id] = handle
+    _handles[scene_path] = handle
     return handle
 
 func poll(handle: LoadHandle) -> void:
     if handle == null or handle.status != LoadStatus.LOADING:
         return
-    var progress: float = 0.0
-    var status := ResourceLoader.load_threaded_get_status(handle.scene_path, progress)
+    var progress_data: Array = []
+    var status := ResourceLoader.load_threaded_get_status(handle.scene_path, progress_data)
+    if progress_data.size() == 2 and progress_data[1] != 0:
+        handle.progress = clamp(float(progress_data[0]) / float(progress_data[1]), 0.0, 1.0)
     match status:
         ResourceLoader.ThreadLoadStatus.THREAD_LOAD_IN_PROGRESS:
-            handle.progress = progress
+            pass
         ResourceLoader.ThreadLoadStatus.THREAD_LOAD_LOADED:
             handle.result = ResourceLoader.load_threaded_get(handle.scene_path)
             handle.progress = 1.0
             handle.status = LoadStatus.LOADED
-            _handles.erase(handle.request_id)
+            _handles.erase(handle.scene_path)
         ResourceLoader.ThreadLoadStatus.THREAD_LOAD_FAILED:
             handle.status = LoadStatus.FAILED
             handle.error = ERR_CANT_OPEN
-            _handles.erase(handle.request_id)
+            _handles.erase(handle.scene_path)
         ResourceLoader.ThreadLoadStatus.THREAD_LOAD_INVALID_RESOURCE:
             handle.status = LoadStatus.FAILED
             handle.error = ERR_FILE_CANT_OPEN
-            _handles.erase(handle.request_id)
+            _handles.erase(handle.scene_path)
         _:
             handle.status = LoadStatus.FAILED
             handle.error = ERR_UNAVAILABLE
-            _handles.erase(handle.request_id)
+            _handles.erase(handle.scene_path)
 
 func cancel(handle: LoadHandle) -> void:
     if handle == null or handle.status != LoadStatus.LOADING:
         return
     ResourceLoader.load_threaded_cancel(handle.scene_path)
     handle.status = LoadStatus.CANCELLED
-    _handles.erase(handle.request_id)
+    _handles.erase(handle.scene_path)
 
 func is_active(handle: LoadHandle) -> bool:
     return handle != null and handle.status == LoadStatus.LOADING
@@ -80,8 +80,7 @@ func has_pending_requests() -> bool:
     return not _handles.is_empty()
 
 func clear() -> void:
-    for id in _handles.keys():
-        var handle: LoadHandle = _handles[id]
+    for handle in _handles.values():
         ResourceLoader.load_threaded_cancel(handle.scene_path)
         handle.status = LoadStatus.CANCELLED
     _handles.clear()

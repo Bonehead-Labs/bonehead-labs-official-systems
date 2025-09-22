@@ -1,6 +1,8 @@
 class_name FlowLoadingScreen
 extends CanvasLayer
 
+const FlowAsyncLoader = preload("res://SceneFlow/AsyncSceneLoader.gd")
+
 ## Called when FlowManager begins an asynchronous scene load.
 func begin_loading(handle: FlowAsyncLoader.LoadHandle) -> void:
     pass

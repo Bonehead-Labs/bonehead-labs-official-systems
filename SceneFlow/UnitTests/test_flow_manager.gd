@@ -28,7 +28,7 @@ class TestFlowManager extends _FlowManager:
 		instantiated_scenes.clear()
 		fake_scene = null
 
-class StubAsyncLoader:
+class StubAsyncLoader extends FlowAsyncLoader:
 	var steps: Array = []
 	var cancelled: bool = false
 	var handle: FlowAsyncLoader.LoadHandle = null
@@ -43,7 +43,7 @@ class StubAsyncLoader:
 		handle.status = FlowAsyncLoader.LoadStatus.LOADING
 		handle.progress = 0.0
 		handle.error = OK
-		handle.request_id = 1
+		cancelled = false
 		return handle
 
 	func poll(active_handle: FlowAsyncLoader.LoadHandle) -> void:

@@ -1,6 +1,9 @@
 class_name _FlowManager
 extends Node
 
+const FlowAsyncLoader = preload("res://SceneFlow/AsyncSceneLoader.gd")
+const FlowLoadingScreen = preload("res://SceneFlow/LoadingScreenContract.gd")
+
 ## FlowManager is an autoload singleton responsible for high-level scene navigation.
 ## It provides a stack-based API for pushing, popping, and replacing scenes.
 
@@ -63,6 +66,7 @@ func _ready() -> void:
 		if current_scene:
 			var entry := FlowStackEntry.new(current_scene.scene_file_path, FlowPayload.new(null, {}, current_scene.scene_file_path))
 			_stack.append(entry)
+	set_process(true)
 
 func _process(_delta: float) -> void:
 	if not has_pending_load():
