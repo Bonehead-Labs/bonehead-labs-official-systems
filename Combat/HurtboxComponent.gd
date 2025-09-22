@@ -6,11 +6,13 @@ extends Area2D
 
 const EventTopics = preload("res://EventBus/EventTopics.gd")
 const DamageInfoScript = preload("res://Combat/DamageInfo.gd")
+const KnockbackResolverScript = preload("res://Combat/KnockbackResolver.gd")
 
 signal hurtbox_hit(hitbox: Variant, damage_info: Variant)
 signal damage_taken(amount: float, source: Node, damage_info: Variant)
 
 @export var health_component_path: NodePath = ^".."
+@export var knockback_resolver_path: NodePath = ^"../KnockbackResolver"
 @export var faction: String = "neutral"
 @export var enabled: bool = true
 
@@ -19,6 +21,7 @@ signal damage_taken(amount: float, source: Node, damage_info: Variant)
 @export var immune_factions: Array[String] = []  # Factions that cannot damage this hurtbox
 
 var _health_component: Variant = null
+var _knockback_resolver: Variant = null
 var _overlapping_hitboxes: Array[Variant] = []
 
 func _ready() -> void:
@@ -30,8 +33,9 @@ func _ready() -> void:
 	area_entered.connect(_on_area_entered)
 	area_exited.connect(_on_area_exited)
 
-	# Find health component
+	# Find health component and knockback resolver
 	_resolve_health_component()
+	_resolve_knockback_resolver()
 
 func _resolve_health_component() -> void:
 	if health_component_path.is_empty():
@@ -45,6 +49,14 @@ func _resolve_health_component() -> void:
 
 	# Connect to health component signals if needed
 	_health_component.damaged.connect(_on_health_damaged)
+
+func _resolve_knockback_resolver() -> void:
+	if knockback_resolver_path.is_empty():
+		_knockback_resolver = get_parent().get_node_or_null("KnockbackResolver")
+	else:
+		_knockback_resolver = get_node_or_null(knockback_resolver_path)
+
+	# Optional - no warning if not found
 
 func _on_area_entered(area: Area2D) -> void:
 	if not enabled:
@@ -94,6 +106,10 @@ func _apply_hitbox_damage(hitbox: Variant) -> void:
 	var damage_applied = _health_component.take_damage(damage_info)
 
 	if damage_applied:
+		# Apply knockback if specified
+		if _knockback_resolver and damage_info.knockback_force != Vector2.ZERO:
+			_knockback_resolver.apply_knockback(damage_info.knockback_force, damage_info.knockback_duration)
+
 		# Emit signals
 		hurtbox_hit.emit(hitbox, damage_info)
 		damage_taken.emit(damage_info.amount, damage_info.source, damage_info)

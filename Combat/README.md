@@ -9,7 +9,9 @@ The Combat System consists of:
 - **DamageInfo**: Resource for damage/healing data with type support
 - **HealthComponent**: Node for managing health, invulnerability, and combat events
 - **HurtboxComponent**: Areas that can receive damage from hitboxes
-- **HitboxComponent**: Areas that can deal damage to hurtboxes
+- **HitboxComponent**: Areas that can deal damage to hitboxes
+- **KnockbackResolver**: Physics-based knockback with multiple behavior modes
+- **StatusEffectManager**: DoT, buffs, debuffs with stacking rules and timers
 - **Combat utilities**: Damage calculation, invulnerability windows, status effects
 
 ## Features
@@ -318,6 +320,309 @@ func _ready():
 - Check faction compatibility with `can_take_damage_from_faction()`
 - Verify collision shapes don't overlap unintentionally
 - Monitor activation states with `is_active()`
+
+## KnockbackResolver
+
+The KnockbackResolver applies physics-based knockback to entities when they take damage. It supports multiple knockback modes and respects entity mass.
+
+### Knockback Modes
+
+- **IMPULSE**: Single physics impulse with drag decay
+- **FORCE**: Continuous force application over time
+- **VELOCITY_SET**: Direct velocity assignment with decay
+- **SPRING**: Spring-like physics with damping
+
+```gdscript
+# Attach to CharacterBody2D
+var knockback := KnockbackResolver.new()
+knockback.mode = KnockbackResolver.KnockbackMode.IMPULSE
+knockback.mass_override = 2.0  # Heavier entity
+knockback.max_knockback_speed = 800.0
+entity.add_child(knockback)
+
+# Apply knockback
+knockback.apply_knockback(Vector2(300, -150), 0.5)  # Force, duration
+```
+
+### Configuration
+
+```gdscript
+@export var mode: KnockbackMode = IMPULSE
+@export var mass_override: float = 0.0         # 0 = use physics mass
+@export var max_knockback_speed: float = 1000.0
+@export var drag_coefficient: float = 0.1
+@export var gravity_multiplier: float = 1.0    # Gravity during knockback
+@export var air_control_modifier: float = 0.5  # Air control during knockback
+```
+
+### Advanced Features
+
+```gdscript
+# Check knockback state
+if knockback.is_knockback_active():
+    var progress = knockback.get_knockback_progress()  # 0.0 to 1.0
+    var velocity = knockback.get_knockback_velocity()
+
+# Stop knockback early
+knockback.stop_knockback()
+
+# Dynamic configuration
+knockback.set_knockback_mode(KnockbackResolver.KnockbackMode.SPRING)
+knockback.set_mass_override(5.0)  # Make entity heavier
+```
+
+### Integration with Damage
+
+Knockback is automatically applied when `DamageInfo` contains knockback data:
+
+```gdscript
+var damage := DamageInfo.create_damage(25.0, DamageInfo.DamageType.PHYSICAL)
+damage = damage.with_knockback(Vector2(200, -100), 0.3)
+
+# HurtboxComponent automatically applies knockback via KnockbackResolver
+health_component.take_damage(damage)
+```
+
+## StatusEffectManager
+
+The StatusEffectManager handles DoT effects, buffs, debuffs, and other temporary status modifications with stacking rules and timers.
+
+### Status Effects
+
+Each status effect has properties:
+- **Duration**: How long the effect lasts
+- **Stacks**: Number of effect instances (for stacking)
+- **Tick Interval**: For damage-over-time effects
+- **Metadata**: Custom effect parameters
+
+```gdscript
+# Attach to entity
+var status_manager := StatusEffectManager.new()
+entity.add_child(status_manager)
+
+# Apply effects
+var poison = StatusEffectManager.create_dot_effect(5.0, 2.0, 10.0)  # 5 dmg every 2s for 10s
+status_manager.apply_effect(poison)
+
+var speed_boost = StatusEffectManager.create_speed_buff(1.5, 8.0)  # 50% speed for 8s
+status_manager.apply_effect(speed_boost)
+```
+
+### Built-in Effect Types
+
+#### Damage Over Time (DoT)
+```gdscript
+var burn = StatusEffectManager.create_dot_effect(8.0, 1.0, 6.0)  # 8 dmg/sec for 6s
+burn.name = "Burning"
+burn.description = "Deals fire damage over time"
+status_manager.apply_effect(burn)
+```
+
+#### Movement Modifiers
+```gdscript
+var slow = StatusEffectManager.create_speed_debuff(0.6, 5.0)  # 40% slow for 5s
+var haste = StatusEffectManager.create_speed_buff(1.8, 10.0)   # 80% speed for 10s
+```
+
+#### Combat Modifiers
+```gdscript
+var damage_up = StatusEffectManager.create_damage_buff(1.25, 15.0)     # 25% more damage
+var damage_down = StatusEffectManager.create_damage_reduction_buff(0.8, 10.0)  # 20% less damage
+```
+
+#### Special Effects
+```gdscript
+var stun = StatusEffectManager.create_stun_effect(2.0)           # Can't move/act for 2s
+var invuln = StatusEffectManager.create_invulnerability_effect(3.0)  # Immune to damage for 3s
+```
+
+### Stacking Rules
+
+Effects can stack with configurable rules:
+
+```gdscript
+# Create stackable effect
+var effect = StatusEffectManager.StatusEffect.new("custom_buff", "Custom Buff")
+effect.max_stacks = 5
+effect.duration = 10.0
+effect.metadata["power"] = 10
+
+# Applying multiple times increases stacks
+status_manager.apply_effect(effect)  # Stack 1
+status_manager.apply_effect(effect)  # Stack 2 (refreshes duration)
+```
+
+### Movement System Integration
+
+Status effects provide hooks for movement/ability systems:
+
+```gdscript
+# Get movement modifiers
+var speed_modifier = status_manager.get_movement_speed_modifier()  # e.g., 0.6 for slowed
+var damage_modifier = status_manager.get_damage_dealt_modifier()   # e.g., 1.25 for buffed
+
+# Check special states
+if status_manager.is_stunned():
+    disable_movement_and_actions()
+
+if status_manager.is_invulnerable():
+    immune_to_damage = true
+```
+
+### Custom Effects
+
+Create custom status effects with callbacks:
+
+```gdscript
+var effect = StatusEffectManager.StatusEffect.new("custom", "Custom Effect")
+effect.duration = 5.0
+effect.on_apply = func(effect_instance):
+    print("Effect applied!")
+    # Custom apply logic
+
+effect.on_tick = func(effect_instance):
+    # Called every tick_interval (if set)
+    apply_custom_effect()
+
+effect.on_expire = func(effect_instance):
+    print("Effect expired!")
+    # Cleanup logic
+
+status_manager.apply_effect(effect)
+```
+
+### Effect Management
+
+```gdscript
+# Check effects
+if status_manager.has_effect("poison"):
+    var stacks = status_manager.get_effect_stacks("poison")
+
+# Remove effects
+status_manager.remove_effect("speed_buff")
+
+# Clear all
+status_manager.clear_all_effects()
+
+# Get all active effects
+var active_effects = status_manager.get_active_effects()
+for effect in active_effects:
+    print("Active: ", effect.name, " (", effect.current_stacks, " stacks)")
+```
+
+### EventBus Integration
+
+Status effects emit detailed analytics:
+
+```gdscript
+# Subscribe to status events
+EventBus.sub("combat/status_effect_applied", _on_status_applied)
+EventBus.sub("combat/status_effect_expired", _on_status_expired)
+
+func _on_status_applied(payload: Dictionary):
+    # payload: {effect_id, effect_name, stacks, duration, entity_position, timestamp_ms}
+    show_status_effect_ui(payload.effect_name, payload.stacks)
+
+func _on_status_expired(payload: Dictionary):
+    hide_status_effect_ui(payload.effect_id)
+```
+
+### Deterministic RNG Usage
+
+For effects that rely on chance (e.g., proc rates), use the RNGService:
+
+```gdscript
+effect.on_tick = func(effect_instance):
+    if RNGService.chance(0.3):  # 30% chance each tick
+        apply_proc_effect()
+```
+
+## Integration Examples
+
+### Complete Combat Entity Setup
+
+```gdscript
+# Player setup with full combat system
+func _ready():
+    # Health management
+    var health = HealthComponent.new()
+    health.max_health = 100.0
+    add_child(health)
+
+    # Status effects
+    var status = StatusEffectManager.new()
+    add_child(status)
+
+    # Knockback physics
+    var knockback = KnockbackResolver.new()
+    knockback.mode = KnockbackResolver.KnockbackMode.IMPULSE
+    add_child(knockback)
+
+    # Hurtbox for taking damage
+    var hurtbox = HurtboxComponent.new()
+    hurtbox.faction = "player"
+    add_child(hurtbox)
+
+# Enemy setup
+func _ready():
+    # Similar setup but with enemy faction
+    var health = HealthComponent.new()
+    health.max_health = 50.0
+    add_child(health)
+
+    var hurtbox = HurtboxComponent.new()
+    hurtbox.faction = "enemy"
+    add_child(hurtbox)
+
+    # Hitbox for dealing damage
+    var hitbox = HitboxComponent.new()
+    hitbox.faction = "enemy"
+    hitbox.damage_amount = 15.0
+    hitbox.activation_duration = 0.3
+    add_child(hitbox)
+
+    # Connect hitbox to attack animation
+    hitbox.activate()  # When enemy attacks
+```
+
+### Movement System Integration
+
+```gdscript
+func _physics_process(delta):
+    # Get base movement speed
+    var base_speed = 200.0
+
+    # Apply status effect modifiers
+    var speed_modifier = 1.0
+    if has_node("StatusEffectManager"):
+        speed_modifier = $StatusEffectManager.get_movement_speed_modifier()
+
+    # Check stun status
+    if has_node("StatusEffectManager") and $StatusEffectManager.is_stunned():
+        velocity = Vector2.ZERO
+        return
+
+    # Apply modified speed
+    velocity = input_vector * base_speed * speed_modifier
+    move_and_slide()
+```
+
+### Ability System Integration
+
+```gdscript
+func can_use_ability(ability_name: String) -> bool:
+    # Check stun status
+    if has_node("StatusEffectManager") and $StatusEffectManager.is_stunned():
+        return false
+
+    # Check other ability-specific conditions
+    return true
+
+func get_ability_damage_multiplier() -> float:
+    if has_node("StatusEffectManager"):
+        return $StatusEffectManager.get_damage_dealt_modifier()
+    return 1.0
+```
 
 ## HealthComponent API
 

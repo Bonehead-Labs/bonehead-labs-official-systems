@@ -6,6 +6,7 @@ extends Node
 
 const EventTopics = preload("res://EventBus/EventTopics.gd")
 const DamageInfoScript = preload("res://Combat/DamageInfo.gd")
+const StatusEffectManagerScript = preload("res://Combat/StatusEffectManager.gd")
 
 signal health_changed(old_health: float, new_health: float)
 signal max_health_changed(old_max: float, new_max: float)
@@ -26,13 +27,16 @@ var _max_health: float = 100.0
 
 @export var invulnerability_duration: float = 0.5
 @export var auto_register_with_save_service: bool = true
+@export var status_effect_manager_path: NodePath = ^"../StatusEffectManager"
 
 var _health: float = 100.0
 var _is_invulnerable: bool = false
 var _invulnerability_timer: float = 0.0
+var _status_effect_manager: Variant = null
 
 func _ready() -> void:
 	_health = max_health
+	_resolve_status_effect_manager()
 	if auto_register_with_save_service:
 		_register_with_save_service()
 
@@ -66,6 +70,13 @@ func take_damage(damage_info: DamageInfoScript) -> bool:
 	# Emit signals
 	damaged.emit(actual_damage, damage_info.source, damage_info)
 	health_changed.emit(old_health, _health)
+
+	# Apply status effects from damage
+	if _status_effect_manager and damage_info.status_effects.size() > 0:
+		for effect_name in damage_info.status_effects:
+			var effect = _create_status_effect_from_name(effect_name, damage_info.metadata)
+			if effect:
+				_status_effect_manager.apply_effect(effect)
 
 	# EventBus analytics
 	_emit_damage_event(EventTopics.PLAYER_DAMAGED, actual_damage, damage_info.source, damage_info)
@@ -175,6 +186,38 @@ func _die(source: Node, damage_info: DamageInfoScript) -> void:
 
 	# TODO: Could emit additional events for game over, respawn, etc.
 
+func _create_status_effect_from_name(effect_name: String, metadata: Dictionary) -> Variant:
+	"""Create a status effect from a string name and metadata."""
+	match effect_name.to_lower():
+		"burning", "burn":
+			var duration = metadata.get("burn_duration", 5.0)
+			var damage_per_tick = metadata.get("burn_damage", 5.0)
+			var effect = StatusEffectManagerScript.create_dot_effect(damage_per_tick, 1.0, duration)
+			effect.name = "Burning"
+			effect.description = "Deals fire damage over time"
+			return effect
+		"poison", "poisoned":
+			var duration = metadata.get("poison_duration", 8.0)
+			var damage_per_tick = metadata.get("poison_damage", 3.0)
+			var effect = StatusEffectManagerScript.create_dot_effect(damage_per_tick, 2.0, duration)
+			effect.name = "Poisoned"
+			effect.description = "Deals poison damage over time"
+			return effect
+		"stun", "stunned":
+			var duration = metadata.get("stun_duration", 2.0)
+			return StatusEffectManagerScript.create_stun_effect(duration)
+		"slow", "slowed":
+			var duration = metadata.get("slow_duration", 4.0)
+			var multiplier = metadata.get("slow_multiplier", 0.5)
+			return StatusEffectManagerScript.create_speed_debuff(multiplier, duration)
+		"speed_boost", "haste":
+			var duration = metadata.get("boost_duration", 5.0)
+			var multiplier = metadata.get("boost_multiplier", 1.5)
+			return StatusEffectManagerScript.create_speed_buff(multiplier, duration)
+		_:
+			push_warning("Unknown status effect: ", effect_name)
+			return null
+
 func _emit_damage_event(topic: StringName, amount: float, source: Node, damage_info: DamageInfoScript) -> void:
 	if Engine.has_singleton("EventBus"):
 		var payload := {
@@ -186,6 +229,14 @@ func _emit_damage_event(topic: StringName, amount: float, source: Node, damage_i
 			"timestamp_ms": Time.get_ticks_msec()
 		}
 		Engine.get_singleton("EventBus").call("pub", topic, payload)
+
+func _resolve_status_effect_manager() -> void:
+	if status_effect_manager_path.is_empty():
+		_status_effect_manager = get_parent().get_node_or_null("StatusEffectManager")
+	else:
+		_status_effect_manager = get_node_or_null(status_effect_manager_path)
+
+	# Optional - no warning if not found, as it might not be needed for all entities
 
 func _register_with_save_service() -> void:
 	if Engine.has_singleton("SaveService"):

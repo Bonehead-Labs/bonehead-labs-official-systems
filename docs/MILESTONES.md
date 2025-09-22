@@ -110,10 +110,10 @@
 - [x] Provide setup guidance for attaching hitboxes to scenes.
 
 ### Milestone 3: Knockback, Stagger, Status Effects
-- [ ] Implement knockback resolver applying physics impulses respecting mass.
-- [ ] Create status effect manager supporting DoT, buffs, debuffs with timers.
-- [ ] Add hooks for movement/ability systems to respond to status changes.
-- [ ] Document status effect authoring, stacking rules, and deterministic seed usage when relying on chance.
+- [x] Implement knockback resolver applying physics impulses respecting mass.
+- [x] Create status effect manager supporting DoT, buffs, debuffs with timers.
+- [x] Add hooks for movement/ability systems to respond to status changes.
+- [x] Document status effect authoring, stacking rules, and deterministic seed usage when relying on chance.
 
 ### Milestone 4: Projectiles, Factions, and Object Pooling
 - [ ] Build projectile base scene with pooling support and configurable motion scripts via the shared object pooling utility.
