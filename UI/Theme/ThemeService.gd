@@ -4,6 +4,8 @@ extends Node
 ## ThemeService exposes runtime access to theme tokens and accessibility toggles.
 ## Add as an autoload named `ThemeService` to query colors, spacing, or high-contrast focus styles.
 
+signal theme_changed()
+
 var _tokens: ThemeTokens
 var _use_high_contrast: bool = false
 var _focus_style_cache: StyleBox = null
@@ -22,6 +24,7 @@ func load_tokens(resource_path: String) -> void:
     if loaded is ThemeTokens:
         _tokens = loaded
         _focus_style_cache = null
+        theme_changed.emit()
     else:
         push_warning("ThemeService: resource at %s is not ThemeTokens" % resource_path)
 
@@ -31,6 +34,7 @@ func enable_high_contrast(enabled: bool) -> void:
         return
     _use_high_contrast = enabled
     _focus_style_cache = null
+    theme_changed.emit()
 
 ## Returns true when high-contrast mode is active.
 func is_high_contrast_enabled() -> bool:
