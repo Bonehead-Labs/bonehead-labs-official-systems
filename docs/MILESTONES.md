@@ -13,11 +13,11 @@
 - [x] Supply idempotent setup script to register the autoload via `ProjectSettings`.
 
 ### Milestone 2: Async Loading & Loading Screen Hooks
-- [ ] Add asynchronous loader utility with progress reporting, cancellation guard, and deterministic replay hooks (consuming `RNGService` seeds when required).
-- [ ] Define loading screen contract (interface or abstract scene) and expose FlowManager configuration to register it.
-- [ ] Integrate loading progress callbacks for UI system consumption.
-- [ ] Emit loading diagnostics/analytics as opt-in `EventBus` events.
-- [ ] Implement error fallback behaviour and emit diagnostics via EventBus.
+- [x] Add asynchronous loader utility with progress reporting, cancellation guard, and deterministic replay hooks (consuming `RNGService` seeds when required).
+- [x] Define loading screen contract (interface or abstract scene) and expose FlowManager configuration to register it.
+- [x] Integrate loading progress callbacks for UI system consumption.
+- [x] Emit loading diagnostics/analytics as opt-in `EventBus` events.
+- [x] Implement error fallback behaviour and emit diagnostics via EventBus.
 
 ### Milestone 3: Shared Transition FX Integration
 - [ ] Create reusable transition resource/library with enter/exit sequences (leveraging cross-cutting transition module once delivered).
