@@ -7,7 +7,7 @@ signal glyph_registered(device_kind: StringName, action: StringName)
 signal glyph_removed(device_kind: StringName, action: StringName)
 signal last_device_changed(kind: StringName, device_id: int)
 
-var _glyphs: Dictionary[StringName, Dictionary[StringName, Texture2D]] = {}
+var _glyphs: Dictionary = {}
 var _last_device_kind: StringName = StringName("keyboard")
 var _last_device_id: int = 0
 const INPUT_SERVICE_PATH: NodePath = NodePath("/root/InputService")
@@ -27,7 +27,7 @@ func register_glyph(device_kind: StringName, action: StringName, texture: Textur
 func unregister_glyph(device_kind: StringName, action: StringName) -> void:
     if not _glyphs.has(device_kind):
         return
-    var table := _glyphs[device_kind]
+    var table: Dictionary = _glyphs[device_kind]
     if table.erase(action):
         emit_signal("glyph_removed", device_kind, action)
     if table.is_empty():
@@ -35,7 +35,7 @@ func unregister_glyph(device_kind: StringName, action: StringName) -> void:
 
 func get_glyph(action: StringName, device_kind: StringName = StringName()) -> Texture2D:
     var kind := device_kind if device_kind != StringName() else _last_device_kind
-    var table := _glyphs.get(kind, null)
+    var table: Dictionary = _glyphs.get(kind, {})
     if table == null:
         return null
     return table.get(action, null)

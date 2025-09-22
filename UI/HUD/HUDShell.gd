@@ -53,10 +53,10 @@ func show_panel(id: StringName, context: Dictionary[StringName, Variant] = _empt
     if not _panels.has(id):
         return ERR_DOES_NOT_EXIST
     if _active_panels.has(id):
-        var entry := _active_panels[id]
-        entry.context = _duplicate_context(context)
-        _call_panel_method(entry.node, StringName("receive_context"), entry.context)
-        entry.node.visible = true
+        var existing_entry := _active_panels[id]
+        existing_entry.context = _duplicate_context(context)
+        _call_panel_method(existing_entry.node, StringName("receive_context"), existing_entry.context)
+        existing_entry.node.visible = true
         panel_shown.emit(id)
         return OK
     var scene := _panels[id]
@@ -93,12 +93,12 @@ func register_action_icon(texture_rect: TextureRect, action: StringName, fallbac
     _update_icon(binding)
 
 func unregister_action_icon(texture_rect: TextureRect) -> void:
-    for i in range(_icon_bindings.size())[::-1]:
+    for i in range(_icon_bindings.size() - 1, -1, -1):
         if _icon_bindings[i].node == texture_rect:
             _icon_bindings.remove_at(i)
 
 func _connect_glyph_events() -> void:
-    var glyph_service := _glyph_service()
+    var glyph_service: _InputGlyphService = _glyph_service()
     if glyph_service == null:
         return
     if glyph_service.has_signal("glyph_registered") and not glyph_service.glyph_registered.is_connected(_on_glyph_changed):
@@ -121,8 +121,8 @@ func _refresh_icons() -> void:
 func _update_icon(binding: IconBinding) -> void:
     if binding.node == null:
         return
-    var glyph_service := _glyph_service()
-    var texture := glyph_service.get_glyph(binding.action) if glyph_service else null
+    var glyph_service: _InputGlyphService = _glyph_service()
+    var texture: Texture2D = glyph_service.get_glyph(binding.action) if glyph_service else null
     if texture:
         binding.node.texture = texture
     else:

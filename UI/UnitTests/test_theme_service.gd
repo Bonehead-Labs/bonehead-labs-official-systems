@@ -33,7 +33,7 @@ func test_high_contrast_toggle_changes_color() -> void:
     var default_color := service.get_color(StringName("background"))
     service.enable_high_contrast(true)
     var contrast_color := service.get_color(StringName("background"))
-    assert_neq(default_color, contrast_color)
+    assert_ne(default_color, contrast_color)
     assert_true(service.is_high_contrast_enabled())
 
 func test_spacing_and_fonts() -> void:
@@ -47,7 +47,7 @@ func test_focus_stylebox_reflects_high_contrast() -> void:
     service.enable_high_contrast(true)
     var contrast_style := service.get_focus_stylebox()
     var contrast_color := (contrast_style as StyleBoxFlat).border_color
-    assert_neq(default_color, contrast_color)
+    assert_ne(default_color, contrast_color)
 
 func test_localization_helper_falls_back_to_default() -> void:
     var token := StringName("ui/example/token")

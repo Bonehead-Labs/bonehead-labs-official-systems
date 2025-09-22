@@ -41,18 +41,18 @@ func is_high_contrast_enabled() -> bool:
     return _use_high_contrast
 
 ## Fetches a color token. Falls back to white when missing.
-func get_color(name: StringName) -> Color:
-    if _tokens and _tokens.has_color(name, _use_high_contrast):
-        return _tokens.get_color(name, _use_high_contrast)
+func get_color(color_name: StringName) -> Color:
+    if _tokens and _tokens.has_color(color_name, _use_high_contrast):
+        return _tokens.get_color(color_name, _use_high_contrast)
     return Color.WHITE
 
 ## Fetches a spacing token in pixels.
-func get_spacing(name: StringName) -> float:
-    return _tokens.get_spacing(name) if _tokens else 0.0
+func get_spacing(spacing_name: StringName) -> float:
+    return _tokens.get_spacing(spacing_name) if _tokens else 0.0
 
 ## Fetches a font size token in points.
-func get_font_size(name: StringName) -> int:
-    return _tokens.get_font_size(name) if _tokens else 16
+func get_font_size(size_name: StringName) -> int:
+    return _tokens.get_font_size(size_name) if _tokens else 16
 
 ## Returns the preferred font resource path, or empty string.
 func get_font_path() -> String:

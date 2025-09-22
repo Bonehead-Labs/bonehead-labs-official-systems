@@ -66,7 +66,7 @@ func replace_screen(id: StringName, context: Dictionary[StringName, Variant] = _
         return push_screen(id, context)
     if not _screens.has(id):
         return ERR_DOES_NOT_EXIST
-    var previous := _stack.pop_back()
+    var previous: ScreenEntry = _stack.pop_back()
     var scene := _screens[id]
     var instance := scene.instantiate()
     if not (instance is Control):
@@ -88,9 +88,9 @@ func replace_screen(id: StringName, context: Dictionary[StringName, Variant] = _
 func pop_screen() -> Error:
     if _stack.size() <= 1:
         return ERR_DOES_NOT_EXIST
-    var current := _stack.pop_back()
+    var current: ScreenEntry = _stack.pop_back()
     _perform_exit_transition(current)
-    var previous := _stack[_stack.size() - 1]
+    var previous: ScreenEntry = _stack[_stack.size() - 1]
     current.node.queue_free()
     _activate_entry(previous)
     screen_popped.emit(current.id)
@@ -100,7 +100,7 @@ func pop_screen() -> Error:
 
 func clear_screens() -> void:
     while _stack.size() > 1:
-        var entry := _stack.pop_back()
+        var entry: ScreenEntry = _stack.pop_back()
         _perform_exit_transition(entry)
         entry.node.queue_free()
     if _stack.size() == 1:
@@ -134,7 +134,7 @@ func _play_transition(entry: ScreenEntry, is_enter: bool) -> void:
     if _transition_player == null or not _transition_player.has_method("play_transition"):
         return
     var metadata := entry.context
-    var transition_name := metadata.get(StringName("transition"), "")
+    var transition_name: String = metadata.get(StringName("transition"), "")
     var transition := transition_library.get_transition(StringName(transition_name))
     if transition == null:
         return
