@@ -25,7 +25,7 @@ func transition_to(state: StringName, payload: Dictionary[StringName, Variant] =
     if not _states.has(state):
         return ERR_DOES_NOT_EXIST
     if _current_instance and not _current_instance.can_transition_to(state):
-        return ERR_INVALID_STATE
+        return ERR_INVALID_PARAMETER
     var previous := _current_state
     if _current_instance:
         _current_instance.exit(payload)
@@ -61,14 +61,16 @@ func get_context() -> Dictionary[StringName, Variant]:
     return _context.duplicate(true)
 
 func _instantiate_state(state: StringName) -> FSMState:
-    var resource := _states[state]
+    var resource: Variant = _states[state]
     var instance: FSMState = null
     if resource is Script:
-        instance = resource.new()
+        var script_instance: Variant = (resource as Script).new()
+        if script_instance is FSMState:
+            instance = script_instance as FSMState
     elif resource is PackedScene:
-        var scene_node := (resource as PackedScene).instantiate()
+        var scene_node: Variant = (resource as PackedScene).instantiate()
         if scene_node is FSMState:
-            instance = scene_node
+            instance = scene_node as FSMState
     if instance == null:
         push_error("StateMachine: state %s is not FSMState" % state)
         return null
