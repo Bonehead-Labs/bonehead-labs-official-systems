@@ -71,6 +71,7 @@ func _process(_delta: float) -> void:
 	if _pending_load.status == FlowAsyncLoader.LoadStatus.LOADING:
 		loading_progress.emit(_pending_load.scene_path, _pending_load.progress, _pending_metadata)
 		_update_loading_screen(_pending_load.progress, _pending_metadata)
+		_emit_loading_event(EventTopics.FLOW_LOADING_PROGRESS)
 		return
 	if _pending_load.status == FlowAsyncLoader.LoadStatus.LOADED:
 		_finalize_pending_load(true)
@@ -237,10 +238,12 @@ func _complete_pending_load_success() -> void:
 		err = ERR_UNCONFIGURED
 	if err == OK:
 		loading_finished.emit(handle.scene_path, handle)
+		_emit_loading_event(EventTopics.FLOW_LOADING_COMPLETED, {"duration_ms": Time.get_ticks_msec() - handle.created_ms})
 		_hide_loading_screen(true, {"scene_path": entry.scene_path})
 		_reset_pending_state()
 		return
 	_emit_scene_error(entry.scene_path, err, "Async scene activation failed")
+	_emit_loading_event(EventTopics.FLOW_LOADING_FAILED, {"error": err})
 	_hide_loading_screen(false, {"scene_path": entry.scene_path, "error": err})
 	_reset_pending_state()
 
@@ -248,6 +251,7 @@ func _handle_load_failure() -> void:
 	var handle := _pending_load
 	if handle == null:
 		return
+	_emit_loading_event(EventTopics.FLOW_LOADING_FAILED, {"error": handle.error})
 	_hide_loading_screen(false, {"scene_path": handle.scene_path, "error": handle.error})
 	_reset_pending_state()
 
@@ -256,6 +260,7 @@ func _handle_load_cancelled() -> void:
 	if handle == null:
 		return
 	loading_cancelled.emit(handle.scene_path, handle)
+	_emit_loading_event(EventTopics.FLOW_LOADING_CANCELLED)
 	_hide_loading_screen(false, {"scene_path": handle.scene_path, "cancelled": true})
 	_reset_pending_state()
 
@@ -301,6 +306,27 @@ func _resolve_loading_screen_parent() -> Node:
 		return scene if scene else get_tree().root
 	var node := get_node_or_null(_loading_screen_parent_path)
 	return node if node else get_tree().root
+
+func _emit_loading_event(topic: StringName, extra: Dictionary = {}) -> void:
+	if not analytics_enabled:
+		return
+	var payload := _build_loading_payload(extra)
+	_emit_analytics(topic, payload)
+
+func _build_loading_payload(extra: Dictionary) -> Dictionary:
+	var handle := _pending_load
+	var payload := {
+		"scene_path": StringName(handle.scene_path) if handle else StringName(),
+		"operation": String(_pending_operation),
+		"progress": handle.progress if handle else 0.0,
+		"metadata": _pending_metadata.duplicate(true),
+		"seed": handle.seed_snapshot if handle else 0,
+		"timestamp_ms": Time.get_ticks_msec(),
+		"stack_size": _stack.size()
+	}
+	for key in extra.keys():
+		payload[key] = extra[key]
+	return payload
 
 func _emit_stack_event(topic: StringName, entry: FlowStackEntry, extra: Dictionary = {}) -> void:
 	if not analytics_enabled:
@@ -366,6 +392,7 @@ func push_scene_async(scene_path: String, payload_data: Variant = null, metadata
 	_pending_metadata = metadata.duplicate(true)
 	loading_started.emit(scene_path, handle)
 	_ensure_loading_screen(handle)
+	_emit_loading_event(EventTopics.FLOW_LOADING_STARTED)
 	return OK
 
 func replace_scene_async(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
@@ -381,6 +408,7 @@ func replace_scene_async(scene_path: String, payload_data: Variant = null, metad
 	_pending_metadata = metadata.duplicate(true)
 	loading_started.emit(scene_path, handle)
 	_ensure_loading_screen(handle)
+	_emit_loading_event(EventTopics.FLOW_LOADING_STARTED)
 	return OK
 
 func cancel_pending_load() -> void:
