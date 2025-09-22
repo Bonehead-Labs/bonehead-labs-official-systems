@@ -28,6 +28,59 @@ class TestFlowManager extends _FlowManager:
 		instantiated_scenes.clear()
 		fake_scene = null
 
+class StubAsyncLoader:
+	var steps: Array = []
+	var cancelled: bool = false
+	var handle: FlowAsyncLoader.LoadHandle = null
+
+	func configure_steps(step_definitions: Array) -> void:
+		steps = []
+		for d in step_definitions:
+			steps.append(d.duplicate(true))
+
+	func start(scene_path: String, metadata: Dictionary = {}) -> FlowAsyncLoader.LoadHandle:
+		handle = FlowAsyncLoader.LoadHandle.new(scene_path, metadata)
+		handle.status = FlowAsyncLoader.LoadStatus.LOADING
+		handle.progress = 0.0
+		handle.error = OK
+		handle.request_id = 1
+		return handle
+
+	func poll(active_handle: FlowAsyncLoader.LoadHandle) -> void:
+		if active_handle == null or active_handle != handle:
+			return
+		if cancelled:
+			handle.status = FlowAsyncLoader.LoadStatus.CANCELLED
+			return
+		if steps.is_empty():
+			return
+		var step: Dictionary = _pop_front()
+		handle.progress = float(step.get("progress", handle.progress))
+		handle.error = step.get("error", handle.error)
+		handle.result = step.get("result", handle.result)
+		handle.status = step.get("status", handle.status)
+
+	func cancel(active_handle: FlowAsyncLoader.LoadHandle) -> void:
+		if active_handle == null or active_handle != handle:
+			return
+		cancelled = true
+		handle.status = FlowAsyncLoader.LoadStatus.CANCELLED
+
+	func has_pending_requests() -> bool:
+		return handle != null and handle.status == FlowAsyncLoader.LoadStatus.LOADING
+
+	func clear() -> void:
+		steps.clear()
+		handle = null
+		cancelled = false
+
+	func _pop_front() -> Dictionary:
+		if steps.is_empty():
+			return {}
+		var value := steps[0]
+		steps.remove_at(0)
+		return value
+
 var manager: TestFlowManager
 var analytics_events: Array = []
 var push_callable: Callable
@@ -115,3 +168,68 @@ func test_analytics_events_fire_when_enabled() -> void:
 	assert_eq(analytics_events.size(), 2)
 	assert_eq(analytics_events[1]["topic"], EventTopics.FLOW_SCENE_ERROR)
 	assert_eq(analytics_events[1]["payload"]["scene_path"], invalid_path)
+
+func test_push_scene_async_completes_successfully() -> void:
+	var stub := StubAsyncLoader.new()
+	var packed := load(SCENE_ALPHA_PATH)
+	stub.configure_steps([
+		{"progress": 0.5, "status": FlowAsyncLoader.LoadStatus.LOADING},
+		{"progress": 1.0, "status": FlowAsyncLoader.LoadStatus.LOADED, "result": packed}
+	])
+	manager._async_loader = stub
+	var progress_calls: Array = []
+	var finished: bool = false
+	manager.loading_progress.connect(func(_path: String, progress: float, _meta: Dictionary):
+		progress_calls.append(progress)
+	)
+	manager.loading_finished.connect(func(_path: String, _handle: FlowAsyncLoader.LoadHandle):
+		finished = true
+	)
+	var err := manager.push_scene_async(SCENE_ALPHA_PATH, {"async": true})
+	assert_eq(err, OK)
+	manager._process(0.0)
+	manager._process(0.0)
+	assert_true(finished)
+	assert_false(manager.has_pending_load())
+	assert_eq(progress_calls.size(), 1)
+	assert_eq(progress_calls[0], 0.5)
+	var entry := manager.peek_scene()
+	assert_not_null(entry)
+	assert_eq(entry.scene_path, SCENE_ALPHA_PATH)
+
+func test_replace_scene_async_failure_rolls_back() -> void:
+	assert_eq(manager.push_scene(SCENE_ALPHA_PATH), OK)
+	var stub := StubAsyncLoader.new()
+	stub.configure_steps([
+		{"status": FlowAsyncLoader.LoadStatus.FAILED, "error": ERR_CANT_OPEN}
+	])
+	manager._async_loader = stub
+	var error_called := false
+	manager.scene_error.connect(func(scene_path: String, error_code: int, _message: String):
+		if scene_path == SCENE_BETA_PATH and error_code == ERR_CANT_OPEN:
+			error_called = true
+	)
+	var err := manager.replace_scene_async(SCENE_BETA_PATH)
+	assert_eq(err, OK)
+	manager._process(0.0)
+	assert_false(manager.has_pending_load())
+	assert_true(error_called)
+	var entry := manager.peek_scene()
+	assert_not_null(entry)
+	assert_eq(entry.scene_path, SCENE_ALPHA_PATH)
+
+func test_cancel_pending_async_load() -> void:
+	var stub := StubAsyncLoader.new()
+	stub.configure_steps([
+		{"progress": 0.25, "status": FlowAsyncLoader.LoadStatus.LOADING}
+	])
+	manager._async_loader = stub
+	var cancelled_called := false
+	manager.loading_cancelled.connect(func(_path: String, _handle: FlowAsyncLoader.LoadHandle):
+		cancelled_called = true
+	)
+	var err := manager.push_scene_async(SCENE_ALPHA_PATH)
+	assert_eq(err, OK)
+	manager.cancel_pending_load()
+	assert_false(manager.has_pending_load())
+	assert_true(cancelled_called)
