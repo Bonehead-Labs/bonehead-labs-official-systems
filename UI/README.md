@@ -1,0 +1,21 @@
+# UI System
+
+## Theme Tokens & Accessibility
+
+- Default tokens: `res://UI/Theme/default_theme.tokens.tres`
+- Helper service: add `res://UI/Theme/ThemeService.gd` as an autoload named `ThemeService`.
+- Toggle high contrast at runtime using `ThemeService.enable_high_contrast(true)`.
+- Query colors, spacing, and font sizes from `ThemeService`.
+- Retrieve focus outlines via `ThemeService.get_focus_stylebox()` for consistent accessibility visuals.
+
+### Integrating Your Own Theme
+
+1. Duplicate `default_theme.tokens.tres`.
+2. Adjust primary/high-contrast palettes, spacing, and typography entries.
+3. Call `ThemeService.load_tokens(<path>)` during bootstrapping.
+
+### Accessibility Hooks
+
+- Respect user preferences by toggling `ThemeService.enable_high_contrast`.
+- The focus stylebox automatically adapts when high contrast mode changes.
+- Consumers can check `ThemeService.is_high_contrast_enabled()` to adjust additional visuals.
