@@ -1,5 +1,15 @@
 # UI System
 
+## Required Autoloads
+
+| Autoload Name | Script Path | Purpose |
+| --- | --- | --- |
+| `ThemeService` | `res://UI/Theme/ThemeService.gd` | Theme tokens, high-contrast toggles |
+| `ThemeLocalization` | `res://UI/Theme/LocalizationHelper.gd` | Localization fallbacks for UI tokens |
+| `InputService` | `res://InputService/InputService.gd` | Action rebinds, device tracking |
+| `InputGlyphService` | `res://UI/HUD/InputGlyphService.gd` | Device-aware action glyphs |
+| `SettingsService` (optional) | _custom implementation_ | Persists user preferences (bindings, analytics) |
+
 ## Theme Tokens & Accessibility
 
 - Default tokens: `res://UI/Theme/default_theme.tokens.tres`
@@ -45,3 +55,10 @@ All widgets subscribe to `ThemeService.theme_changed` so they react to palette u
 - `InputGlyphService.gd` stores glyph textures per device kind/action and listens to `InputService` device changes.
 - Bind glyph icons via `register_action_icon(texture_rect, action)`; the HUD updates automatically when the active device changes.
 - Panels can implement `receive_context`, `on_panel_shown`, and `on_panel_hidden` to respond to HUD events.
+
+## Input Rebind UI
+
+- `InputRebindPanel.tscn` provides a scrollable list of actions wired to `InputService`'s rebind API.
+- Bindings persist through optional `SettingsService` keys (`input_bindings/<action>`); the panel reloads saved mappings on startup.
+- Buttons use localization tokens (`ui/rebind/change`, `ui/rebind/waiting`) with fallbacks.
+- Integrates seamlessly with `UIScreenManager` by adding the panel as a screen or HUD layer.
