@@ -87,6 +87,17 @@ class StubAsyncLoader extends FlowAsyncLoader:
 		steps.remove_at(0)
 		return value
 
+class StubCheckpointManager extends Node:
+	var calls: Array = []
+	func on_scene_transition(payload: Dictionary) -> void:
+		calls.append(payload.duplicate(true))
+
+class StubSaveService extends Node:
+	var saves: Array = []
+	func save_game(save_id: String) -> bool:
+		saves.append(save_id)
+		return true
+
 func _configure_transition_library() -> void:
 	var library := FlowTransitionLibrary.new()
 	var transition := FlowTransition.new()
@@ -287,3 +298,23 @@ func test_transition_complete_signal_on_async_load() -> void:
 	assert_false(manager.has_pending_load())
 	assert_true(events.size() >= 1)
 	assert_eq(events.back()["direction"], "enter")
+
+func test_checkpoint_manager_notified_on_push() -> void:
+	var checkpoint := StubCheckpointManager.new()
+	get_tree().root.add_child(checkpoint)
+	manager.configure_checkpoint_manager({"node": checkpoint})
+	var err := manager.push_scene(SCENE_ALPHA_PATH)
+	assert_eq(err, OK)
+	assert_eq(checkpoint.calls.size(), 1)
+	var payload: Dictionary = checkpoint.calls[0]
+	assert_eq(payload.get("operation"), "push")
+	assert_eq(payload.get("scene_path"), SCENE_ALPHA_PATH)
+	checkpoint.queue_free()
+
+func test_save_service_invoked_before_transition() -> void:
+	var save_stub := StubSaveService.new()
+	manager.configure_save_on_transition({"enabled": true, "save_id": "flow_test", "node": save_stub})
+	var err := manager.push_scene(SCENE_ALPHA_PATH)
+	assert_eq(err, OK)
+	assert_eq(save_stub.saves.size(), 1)
+	assert_eq(save_stub.saves[0], "flow_test")
