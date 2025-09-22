@@ -69,7 +69,7 @@ func physics_update(delta: float) -> void:
         _path_update_timer = 0.0
         # Update path to target if using navigation
 
-func handle_event(event: StringName, data: Variant = null) -> void:
+func handle_event(event: StringName, _data: Variant = null) -> void:
     match event:
         &"target_lost":
             machine.transition_to(&"investigate", {&"last_position": _last_known_target_position})

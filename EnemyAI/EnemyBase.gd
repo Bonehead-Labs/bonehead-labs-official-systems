@@ -177,7 +177,7 @@ func alert(target: Node2D) -> void:
 
         if config and config.emit_analytics:
             _emit_analytics_event("alerted", {
-                "target": target.name if target else "unknown",
+                "target": String(target.name) if target else "unknown",
                 "position": global_position
             })
 
@@ -227,13 +227,13 @@ func can_attack_target(target: Node2D) -> bool:
 
     return distance <= max_range
 
-func take_damage(amount: float, source: Node = null, damage_type: String = "physical") -> void:
+func take_damage(amount: float, source: Node = null, _damage_type: String = "physical") -> void:
     if _health_component:
-        var damage_info = preload("res://Combat/DamageInfo.gd").create_damage(amount, 0, source)  # TODO: Map damage_type string to enum
+        var damage_info = preload("res://Combat/DamageInfo.gd").create_damage(amount, DamageInfoScript.DamageType.PHYSICAL, source)
         _health_component.take_damage(damage_info)
 
 ## Death handling
-func _on_died(source: Node, damage_info: Variant) -> void:
+func _on_died(_source: Node, damage_info: Variant) -> void:
     _is_defeated = true
     defeated.emit(self, "damage")
 
@@ -298,7 +298,7 @@ func save_data() -> Dictionary:
         health_data = _health_component.save_data()
 
     return {
-        "position": { "x": global_position.x, "y": global_position.y },
+        "global_position": { "x": global_position.x, "y": global_position.y },
         "velocity": { "x": _velocity.x, "y": _velocity.y },
         "facing_direction": { "x": _facing_direction.x, "y": _facing_direction.y },
         "current_state": _current_state,
@@ -308,7 +308,7 @@ func save_data() -> Dictionary:
     }
 
 func load_data(data: Dictionary) -> bool:
-    global_position = Vector2(data.get("position", {}).get("x", 0.0), data.get("position", {}).get("y", 0.0))
+    global_position = Vector2(data.get("global_position", {}).get("x", 0.0), data.get("global_position", {}).get("y", 0.0))
     _velocity = Vector2(data.get("velocity", {}).get("x", 0.0), data.get("velocity", {}).get("y", 0.0))
     _facing_direction = Vector2(data.get("facing_direction", {}).get("x", 1.0), data.get("facing_direction", {}).get("y", 0.0))
 

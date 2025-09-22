@@ -62,12 +62,12 @@ func update(delta: float) -> void:
         _enemy.move_toward(current_waypoint, _config.patrol_speed if _config else 50.0)
         _enemy.flip_sprite_to_face(current_waypoint)
 
-func physics_update(delta: float) -> void:
+func physics_update(_delta: float) -> void:
     # Handle alert transitions
     if _enemy.is_alerted():
         machine.transition_to(&"chase", {&"reason": &"alerted"})
 
-func handle_event(event: StringName, data: Variant = null) -> void:
+func handle_event(event: StringName, _data: Variant = null) -> void:
     match event:
         &"alerted":
             machine.transition_to(&"chase", {&"reason": &"alerted"})
