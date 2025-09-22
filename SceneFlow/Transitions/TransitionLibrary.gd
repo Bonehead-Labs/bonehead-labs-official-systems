@@ -23,14 +23,14 @@ func has_transition(name: StringName) -> bool:
 func add_transition(transition: FlowTransition) -> void:
     if not transition:
         return
-    for i in transitions.size():
+    for i in range(transitions.size()):
         if transitions[i].name == transition.name:
             transitions[i] = transition
             return
     transitions.append(transition)
 
 func remove_transition(name: StringName) -> void:
-    for i in transitions.size():
+    for i in range(transitions.size()):
         if transitions[i].name == String(name):
             transitions.remove_at(i)
             return
