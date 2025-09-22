@@ -11,6 +11,9 @@ signal state_event(event: StringName, data: Variant)
 signal interaction_available_changed(available: bool)
 signal ability_registered(ability_id: StringName, ability: Node)
 signal ability_unregistered(ability_id: StringName)
+signal player_damaged(amount: float, source: Node, remaining_health: float)
+signal player_healed(amount: float, source: Node, new_health: float)
+signal player_died(source: Node)
 
 const EventTopics = preload("res://EventBus/EventTopics.gd")
 const MovementConfigScript = preload("res://PlayerController/MovementConfig.gd")
@@ -44,12 +47,20 @@ var _axis_values: Dictionary[StringName, float] = {}
 var _interaction_detector: InteractionDetectorScript = null
 var _abilities: Dictionary[StringName, Node] = {}
 
+# Combat/Health state
+var _health: float = 100.0
+var _max_health: float = 100.0
+var _is_invulnerable: bool = false
+var _invulnerability_timer: float = 0.0
+var _last_damage_source: Node = null
+
 func _ready() -> void:
     if movement_config == null:
         movement_config = MovementConfigScript.new()
     _resolve_state_machine()
     _setup_interaction_detector()
     _connect_input_service()
+    _register_with_save_service()
     _was_on_floor = is_on_floor()
 
 func _process(delta: float) -> void:
@@ -236,6 +247,214 @@ func deactivate_ability(ability_id: StringName) -> void:
     if ability:
         ability.deactivate()
 
+# Combat/Damage System
+func take_damage(amount: float, source: Node = null, damage_type: String = "physical") -> void:
+    """Apply damage to the player. Forwards to Combat system via signals."""
+    if _is_invulnerable or amount <= 0.0:
+        return
+
+    var actual_damage := amount
+    var old_health := _health
+
+    # Apply damage
+    _health = max(0.0, _health - actual_damage)
+    _last_damage_source = source
+
+    # Emit signals
+    player_damaged.emit(actual_damage, source, _health)
+
+    # EventBus analytics
+    _emit_player_event(EventTopics.PLAYER_DAMAGED, {
+        StringName("amount"): actual_damage,
+        StringName("hp_after"): _health,
+        StringName("source_type"): source.get_class() if source else "unknown",
+        StringName("damage_type"): damage_type,
+        StringName("player_position"): global_position
+    })
+
+    # Check for death
+    if _health <= 0.0 and old_health > 0.0:
+        die(source)
+
+func heal(amount: float, source: Node = null) -> void:
+    """Heal the player. Amount is clamped to not exceed max health."""
+    if amount <= 0.0:
+        return
+
+    var actual_heal: float = min(amount, _max_health - _health)
+    if actual_heal <= 0.0:
+        return
+
+    var _old_health := _health
+    _health = min(_max_health, _health + actual_heal)
+
+    # Emit signals
+    player_healed.emit(actual_heal, source, _health)
+
+    # EventBus analytics
+    _emit_player_event(EventTopics.PLAYER_HEALED, {
+        StringName("amount"): actual_heal,
+        StringName("hp_after"): _health,
+        StringName("source_type"): source.get_class() if source else "unknown",
+        StringName("player_position"): global_position
+    })
+
+func die(source: Node = null) -> void:
+    """Handle player death."""
+    _last_damage_source = source
+
+    # Emit signals
+    player_died.emit(source)
+
+    # EventBus analytics
+    _emit_player_event(EventTopics.PLAYER_DIED, {
+        StringName("source_type"): source.get_class() if source else "unknown",
+        StringName("final_position"): global_position
+    })
+
+    # TODO: Transition to death state, respawn logic, etc.
+
+func set_max_health(new_max: float) -> void:
+    """Set the maximum health value."""
+    _max_health = max(0.0, new_max)
+    _health = min(_health, _max_health)
+
+func get_health() -> float:
+    """Get current health value."""
+    return _health
+
+func get_max_health() -> float:
+    """Get maximum health value."""
+    return _max_health
+
+func get_health_percentage() -> float:
+    """Get health as a percentage (0.0 to 1.0)."""
+    return _health / _max_health if _max_health > 0.0 else 0.0
+
+func is_alive() -> bool:
+    """Check if the player is alive."""
+    return _health > 0.0
+
+func is_full_health() -> bool:
+    """Check if the player has full health."""
+    return _health >= _max_health
+
+func set_invulnerable(duration: float) -> void:
+    """Make the player invulnerable for a specified duration."""
+    _is_invulnerable = true
+    _invulnerability_timer = duration
+
+    if duration > 0.0:
+        # Schedule end of invulnerability
+        call_deferred("_schedule_invulnerability_end", duration)
+
+func _schedule_invulnerability_end(duration: float) -> void:
+    """Helper to end invulnerability after a delay."""
+    await get_tree().create_timer(duration).timeout
+    if _invulnerability_timer <= 0.0:  # Check if it wasn't reset
+        _is_invulnerable = false
+        _invulnerability_timer = 0.0
+
+func is_invulnerable() -> bool:
+    """Check if the player is currently invulnerable."""
+    return _is_invulnerable
+
+# Save/Load System - ISaveable Implementation
+func save_data() -> Dictionary:
+    """Save player state for persistence."""
+    return {
+        "position": {
+            "x": global_position.x,
+            "y": global_position.y
+        },
+        "health": _health,
+        "max_health": _max_health,
+        "velocity": {
+            "x": _velocity.x,
+            "y": _velocity.y
+        },
+        "is_invulnerable": _is_invulnerable,
+        "invulnerability_timer": _invulnerability_timer,
+        "current_state": _state_machine.get_current_state() if _state_machine else StringName(),
+        "abilities": _get_active_abilities_data()
+    }
+
+func load_data(data: Dictionary) -> bool:
+    """Load player state from saved data."""
+    if not data.has("position"):
+        return false
+
+    # Load position
+    var pos_data = data.position
+    global_position = Vector2(
+        pos_data.get("x", 0.0),
+        pos_data.get("y", 0.0)
+    )
+
+    # Load health
+    _health = data.get("health", _max_health)
+    _max_health = data.get("max_health", 100.0)
+
+    # Load velocity
+    if data.has("velocity"):
+        var vel_data = data.velocity
+        _velocity = Vector2(
+            vel_data.get("x", 0.0),
+            vel_data.get("y", 0.0)
+        )
+
+    # Load invulnerability state
+    _is_invulnerable = data.get("is_invulnerable", false)
+    _invulnerability_timer = data.get("invulnerability_timer", 0.0)
+
+    # Load state machine state
+    var saved_state = data.get("current_state", "")
+    if _state_machine and saved_state != "":
+        _state_machine.transition_to(StringName(saved_state), {})
+
+    # Load abilities
+    var abilities_data = data.get("abilities", {})
+    _load_abilities_data(abilities_data)
+
+    return true
+
+func get_save_id() -> String:
+    """Unique identifier for this saveable object."""
+    return "player_controller"
+
+func get_save_priority() -> int:
+    """Priority for save/load order. Lower numbers save first."""
+    return 10  # High priority - save player state early
+
+func _get_active_abilities_data() -> Dictionary:
+    """Get data for active abilities."""
+    var data := {}
+    for ability_id in _abilities:
+        var ability = _abilities[ability_id]
+        if ability.is_active():
+            data[ability_id] = {
+                "active": true,
+                "custom_data": ability.save_data() if ability.has_method("save_data") else {}
+            }
+    return data
+
+func _load_abilities_data(abilities_data: Dictionary) -> void:
+    """Load abilities from saved data."""
+    for ability_id in abilities_data:
+        var ability_data = abilities_data[ability_id]
+        var ability = get_ability(StringName(ability_id))
+        if ability:
+            var was_active = ability_data.get("active", false)
+            if was_active:
+                ability.activate()
+            else:
+                ability.deactivate()
+
+            # Load custom ability data
+            var custom_data = ability_data.get("custom_data", {})
+            if ability.has_method("load_data"):
+                ability.load_data(custom_data)
+
 func _resolve_state_machine() -> void:
     if state_machine_path.is_empty():
         _ensure_state_machine_child()
@@ -348,6 +567,13 @@ func _update_after_physics(delta: float) -> void:
         _coyote_timer = max(_coyote_timer - delta, 0.0)
     _jump_buffer_timer = max(_jump_buffer_timer - delta, 0.0)
     _was_on_floor = on_floor
+
+func _register_with_save_service() -> void:
+    """Register this player controller with the SaveService."""
+    if Engine.has_singleton("SaveService"):
+        var save_service := Engine.get_singleton("SaveService") as Object
+        if save_service and save_service.has_method("register_saveable"):
+            save_service.call("register_saveable", self)
 
 func _connect_input_service() -> void:
     if Engine.is_editor_hint() or _input_service_connected:
