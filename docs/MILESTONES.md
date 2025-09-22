@@ -26,10 +26,10 @@
 - [x] Document extension hooks for custom transitions.
 
 ### Milestone 4: World & Save Hooks
-- [ ] Invoke `World.CheckpointManager` checkpoint updates during scene swap events when available.
-- [ ] Provide opt-in hooks for `SaveService` snapshot requests via `SettingsService` for persistent preferences prior to scene unload.
-- [ ] Add guard rails for editor-only execution (`Engine.is_editor_hint`).
-- [ ] Update docs with integration guidance for world/save systems and analytics instrumentation.
+- [x] Invoke `World.CheckpointManager` checkpoint updates during scene swap events when available.
+- [x] Provide opt-in hooks for `SaveService` snapshot requests via `SettingsService` for persistent preferences prior to scene unload.
+- [x] Add guard rails for editor-only execution (`Engine.is_editor_hint`).
+- [x] Update docs with integration guidance for world/save systems and analytics instrumentation.
 
 ## UI System
 
