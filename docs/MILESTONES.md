@@ -53,10 +53,10 @@
 - [x] Document how to register new screens and wire InputService actions and localization keys.
 
 ### Milestone 4: HUD Shell & Input Glyphs
-- [ ] Provide HUD root scene with pluggable panels (health, inventory prompts, quest log stubs).
-- [ ] Integrate InputService glyph provider for dynamic device icons.
-- [ ] Add extensibility API for gameplay systems to register HUD widgets with localization/accessibility metadata.
-- [ ] Update documentation with glyph usage, HUD composition patterns, and analytics hooks.
+- [x] Provide HUD root scene with pluggable panels (health, inventory prompts, quest log stubs).
+- [x] Integrate InputService glyph provider for dynamic device icons.
+- [x] Add extensibility API for gameplay systems to register HUD widgets with localization/accessibility metadata.
+- [x] Update documentation with glyph usage, HUD composition patterns, and analytics hooks.
 
 ### Milestone 5: Input Rebind UI
 - [ ] Implement Input Rebind UI scenes leveraging `InputService` rebind APIs and localization tokens.

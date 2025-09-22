@@ -38,3 +38,10 @@ All widgets subscribe to `ThemeService.theme_changed` so they react to palette u
 - Integrates with the shared transition library when a transition player is supplied.
 - Publishes `UI_SCREEN_PUSHED` / `UI_SCREEN_POPPED` EventBus topics when available.
 - Screens receive context via `receive_context`, `on_screen_entered`, `on_screen_exited`. Wire `InputService` actions inside these callbacks to react to user input, and use localization tokens for UI copy.
+
+## HUD Shell & Input Glyphs
+
+- `HUDShell.gd` registers pluggable HUD panels (`register_panel`, `show_panel`, `hide_panel`).
+- `InputGlyphService.gd` stores glyph textures per device kind/action and listens to `InputService` device changes.
+- Bind glyph icons via `register_action_icon(texture_rect, action)`; the HUD updates automatically when the active device changes.
+- Panels can implement `receive_context`, `on_panel_shown`, and `on_panel_hidden` to respond to HUD events.
