@@ -62,7 +62,7 @@ func get_spacing(token: StringName) -> float:
     return float(spacing.get(token, 0.0))
 
 func get_font_size(token: StringName) -> int:
-    var sizes := typography.get(StringName("sizes"), {})
+    var sizes := typography.get(StringName("sizes"), {} as Dictionary[StringName, int]) as Dictionary[StringName, int]
     return int(sizes.get(token, 16))
 
 func get_font_path() -> String:
