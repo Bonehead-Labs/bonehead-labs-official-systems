@@ -82,8 +82,8 @@ func get_current_state() -> StringName:
 func has_state(state: StringName) -> bool:
     return _states.has(state)
 
-func register_state(id: StringName, script: Script) -> void:
-    _states[id] = script
+func register_state(id: StringName, resource: Resource) -> void:
+    _states[id] = resource
 
 func unregister_state(id: StringName) -> void:
     _states.erase(id)

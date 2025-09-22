@@ -11,6 +11,12 @@ class TestController extends _PlayerController2D:
 
 var controller: TestController
 var config: MovementConfig
+var event_bus: Node
+
+class EventBusStub extends Node:
+    var calls: Array = []
+    func pub(topic: StringName, payload: Dictionary) -> void:
+        calls.append({"topic": topic, "payload": payload})
 
 func before_each() -> void:
     controller = TestController.new()
@@ -18,10 +24,16 @@ func before_each() -> void:
     controller.movement_config = config
     controller.enable_manual_input(true)
     controller.name = "PlayerController"
+    event_bus = EventBusStub.new()
+    event_bus.name = "EventBus"
+    get_tree().root.add_child(event_bus)
     get_tree().root.add_child(controller)
     await controller.ready
 
 func after_each() -> void:
+    if is_instance_valid(event_bus):
+        event_bus.queue_free()
+        await get_tree().process_frame
     if is_instance_valid(controller):
         controller.queue_free()
         await get_tree().process_frame

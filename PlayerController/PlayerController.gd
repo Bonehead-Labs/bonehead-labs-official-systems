@@ -6,29 +6,45 @@ extends CharacterBody2D
 signal player_spawned(position: Vector2)
 signal player_jumped()
 signal player_landed()
+signal state_changed(previous: StringName, current: StringName)
+signal state_event(event: StringName, data: Variant)
+
+const EventTopics = preload("res://EventBus/EventTopics.gd")
 
 @export var movement_config: MovementConfig
 @export var manual_input_enabled: bool = false
 @export var manual_input_vector: Vector2 = Vector2.ZERO
+@export var state_machine_path: NodePath
 
 var _velocity: Vector2
 var _coyote_timer: float = 0.0
 var _jump_buffer_timer: float = 0.0
 var _was_on_floor: bool = false
+var _state_machine: StateMachine
 
 func _ready() -> void:
     _velocity = Vector2.ZERO
     if movement_config == null:
         movement_config = MovementConfig.new()
+    _resolve_state_machine()
+
+func _process(delta: float) -> void:
+    if _state_machine:
+        _state_machine.update_state(delta)
 
 func spawn(position: Vector2) -> void:
     global_position = position
     _velocity = Vector2.ZERO
     player_spawned.emit(position)
+    _emit_player_event(EventTopics.PLAYER_SPAWNED, {
+        StringName("position"): position
+    } as Dictionary[StringName, Variant])
 
 func _physics_process(delta: float) -> void:
     if movement_config == null:
         return
+    if _state_machine:
+        _state_machine.physics_update_state(delta)
     _apply_horizontal(delta)
     _apply_vertical(delta)
     velocity = _velocity
@@ -53,6 +69,7 @@ func _apply_vertical(delta: float) -> void:
     if _should_start_jump():
         _velocity.y = movement_config.jump_velocity
         player_jumped.emit()
+        _emit_player_event(EventTopics.PLAYER_JUMPED, {} as Dictionary[StringName, Variant])
         _jump_buffer_timer = 0.0
         _coyote_timer = 0.0
     else:
@@ -64,6 +81,7 @@ func _post_move(delta: float) -> void:
     if is_on_floor():
         if _was_on_floor == false:
             player_landed.emit()
+            _emit_player_event(EventTopics.PLAYER_LANDED, {} as Dictionary[StringName, Variant])
         _coyote_timer = movement_config.coyote_time
     else:
         _coyote_timer = max(_coyote_timer - delta, 0.0)
@@ -113,4 +131,39 @@ func set_config(config: MovementConfig) -> void:
 
 func get_velocity() -> Vector2:
     return _velocity
+
+func _resolve_state_machine() -> void:
+    if state_machine_path.is_empty():
+        return
+    var node := get_node_or_null(state_machine_path)
+    if node is StateMachine:
+        _state_machine = node
+        var context := {
+            StringName("movement_config"): movement_config,
+            StringName("controller"): self
+        } as Dictionary[StringName, Variant]
+        _state_machine.set_context(context)
+        if not _state_machine.state_changed.is_connected(_on_state_changed):
+            _state_machine.state_changed.connect(_on_state_changed)
+        if not _state_machine.state_event.is_connected(_on_state_event):
+            _state_machine.state_event.connect(_on_state_event)
+
+func _on_state_changed(previous: StringName, current: StringName) -> void:
+    state_changed.emit(previous, current)
+    _emit_player_event(EventTopics.PLAYER_STATE_CHANGED, {
+        StringName("previous"): previous,
+        StringName("current"): current
+    } as Dictionary[StringName, Variant])
+
+func _on_state_event(event: StringName, data: Variant) -> void:
+    state_event.emit(event, data)
+    _emit_player_event(EventTopics.PLAYER_STATE_CHANGED, {
+        StringName("event"): event,
+        StringName("data"): data
+    } as Dictionary[StringName, Variant])
+
+func _emit_player_event(topic: StringName, payload: Dictionary[StringName, Variant]) -> void:
+    if Engine.has_singleton("EventBus"):
+        payload[StringName("timestamp_ms")] = Time.get_ticks_msec()
+        Engine.get_singleton("EventBus").call("pub", topic, payload)
 *** End Patch
