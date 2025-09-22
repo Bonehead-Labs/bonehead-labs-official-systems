@@ -6,6 +6,13 @@ extends Node
 
 const ERROR_NO_PREVIOUS_SCENE: int = ERR_DOES_NOT_EXIST
 
+## Emitted immediately before a scene transition occurs.
+signal about_to_change(scene_path: String, entry: FlowStackEntry)
+## Emitted after a scene has been successfully loaded and payload delivered.
+signal scene_changed(scene_path: String, entry: FlowStackEntry)
+## Emitted when a scene transition fails along with the error code and message.
+signal scene_error(scene_path: String, error_code: int, message: String)
+
 class FlowPayload extends RefCounted:
 	var data: Variant
 	var metadata: Dictionary
@@ -58,14 +65,18 @@ func push_scene(scene_path: String, payload_data: Variant = null, metadata: Dict
 ## @return Error code from the scene change operation.
 func replace_scene(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
 	var new_entry := _create_entry(scene_path, payload_data, metadata)
+	var previous_entry := _stack[-1] if _stack.size() > 0 else null
 	if _stack.is_empty():
 		_stack.append(new_entry)
 	else:
 		_stack[_stack.size() - 1] = new_entry
 	var active := _stack[_stack.size() - 1]
 	var err := _change_to(active)
-	if err != OK and _stack.size() == 1:
-		_stack.clear()
+	if err != OK:
+		if previous_entry != null:
+			_stack[_stack.size() - 1] = previous_entry
+		else:
+			_stack.clear()
 	return err
 
 ## Pops the current scene and returns to the previous one.
@@ -75,11 +86,14 @@ func replace_scene(scene_path: String, payload_data: Variant = null, metadata: D
 func pop_scene(payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
 	if _stack.size() <= 1:
 		return ERROR_NO_PREVIOUS_SCENE
-	_stack.pop_back()
+	var removed := _stack.pop_back()
 	var target := _stack[_stack.size() - 1]
 	if payload_data != null or metadata.size() > 0:
-		target.payload = FlowPayload.new(payload_data, metadata, _last_scene_path())
-	return _change_to(target)
+		target.payload = FlowPayload.new(payload_data, metadata, removed.scene_path)
+	var err := _change_to(target)
+	if err != OK:
+		_stack.append(removed)
+	return err
 
 ## Peeks at the current stack entry.
 ## @return FlowStackEntry describing the active scene.
@@ -108,13 +122,34 @@ func _last_scene_path() -> StringName:
 
 func _change_to(entry: FlowStackEntry) -> Error:
 	if entry.scene_path.is_empty():
+		_emit_scene_error(entry.scene_path, ERR_INVALID_PARAMETER, "Scene path is empty.")
 		return ERR_INVALID_PARAMETER
 	if not ResourceLoader.exists(entry.scene_path):
+		_emit_scene_error(entry.scene_path, ERR_FILE_NOT_FOUND, "Scene path not found: %s" % entry.scene_path)
 		return ERR_FILE_NOT_FOUND
 	var packed := ResourceLoader.load(entry.scene_path)
 	if packed == null or not packed is PackedScene:
+		_emit_scene_error(entry.scene_path, ERR_FILE_CANT_OPEN, "Scene could not be loaded as PackedScene.")
 		return ERR_FILE_CANT_OPEN
+	about_to_change.emit(entry.scene_path, entry)
 	var err := get_tree().change_scene_to_packed(packed)
 	if err != OK:
+		_emit_scene_error(entry.scene_path, err, "change_scene_to_packed failed" )
 		return err
+	_deliver_payload(entry)
+	scene_changed.emit(entry.scene_path, entry)
 	return OK
+
+func _deliver_payload(entry: FlowStackEntry) -> void:
+	var payload := entry.payload
+	if payload == null:
+		return
+	var active_scene := get_tree().current_scene
+	if active_scene == null:
+		return
+	active_scene.set_meta(&"flow_payload", payload)
+	if active_scene.has_method("receive_flow_payload"):
+		active_scene.call_deferred("receive_flow_payload", payload)
+
+func _emit_scene_error(scene_path: String, error_code: int, message: String) -> void:
+	scene_error.emit(scene_path, error_code, message)
