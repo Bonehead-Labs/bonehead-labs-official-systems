@@ -67,10 +67,10 @@
 ## Player Controller (2D)
 
 ### Milestone 1: Movement Core & Config
-- [ ] Create `MovementConfig` Resource defining speed, acceleration, jump, damping, etc.
-- [ ] Implement player controller script with typed export of config and basic locomotion.
-- [ ] Emit movement-related signals (spawn, landed, jump) for other systems and analytics.
-- [ ] Provide README outlining config tuning workflow and deterministic seeding considerations with `RNGService`.
+- [x] Create `MovementConfig` Resource defining speed, acceleration, jump, damping, etc.
+- [x] Implement player controller script with typed export of config and basic locomotion.
+- [x] Emit movement-related signals (spawn, landed, jump) for other systems and analytics.
+- [x] Provide README outlining config tuning workflow and deterministic seeding considerations with `RNGService`.
 
 ### Milestone 2: Generic FSM Framework
 - [ ] Author shared FSM module (states, transitions, context) reusable by enemies (see Cross-Cutting Modules: FSM Toolkit).
