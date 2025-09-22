@@ -1,17 +1,25 @@
 extends "res://addons/gut/test.gd"
 
 const ThemeServicePath: String = "res://UI/Theme/ThemeService.gd"
+const LocalizationHelperPath: String = "res://UI/Theme/LocalizationHelper.gd"
 
 var service: _ThemeService
+var localization: _ThemeLocalization
 
 func before_each() -> void:
     service = load(ThemeServicePath).new()
     get_tree().root.add_child(service)
     await service.ready
+    localization = load(LocalizationHelperPath).new()
+    get_tree().root.add_child(localization)
+    await localization.ready
 
 func after_each() -> void:
     if is_instance_valid(service):
         service.queue_free()
+        await get_tree().process_frame
+    if is_instance_valid(localization):
+        localization.queue_free()
         await get_tree().process_frame
 
 func test_default_color_lookup() -> void:
@@ -38,3 +46,10 @@ func test_focus_stylebox_reflects_high_contrast() -> void:
     var contrast_style := service.get_focus_stylebox()
     var contrast_color := (contrast_style as StyleBoxFlat).border_color
     assert_neq(default_color, contrast_color)
+
+func test_localization_helper_falls_back_to_default() -> void:
+    var token := StringName("ui/example/token")
+    var translated := localization.translate(token, "Fallback")
+    assert_eq(translated, "Fallback")
+    var formatted := localization.translate_with_args(token, {"value": 5}, "Score: %{value}")
+    assert_eq(formatted, "Score: 5")
