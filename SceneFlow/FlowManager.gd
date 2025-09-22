@@ -131,8 +131,8 @@ func _create_entry(scene_path: String, payload_data: Variant, metadata: Dictiona
 
 func _last_scene_path() -> StringName:
 	if _stack.is_empty():
-	var current_scene := _get_active_scene()
-	return current_scene.scene_file_path if current_scene else StringName()
+		var current_scene := _get_active_scene()
+		return current_scene.scene_file_path if current_scene else StringName()
 	return _stack[-1].scene_path
 
 func _change_to(entry: FlowStackEntry) -> Error:
