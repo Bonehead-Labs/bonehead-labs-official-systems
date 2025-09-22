@@ -34,11 +34,11 @@
 ## UI System
 
 ### Milestone 1: Theme, Tokens, and Accessibility Shell
-- [ ] Define theme resource with typography, color, spacing, and high-contrast tokens stored under `UI/Theme`.
-- [ ] Register focus outline/focus highlight assets and expose accessibility toggles.
-- [ ] Implement localization token access helper hooking into `TranslationServer` with fallback strategies.
-- [ ] Document theming, localization workflow, and accessibility expectations.
-- [ ] Provide setup script (if needed) to register theme resources without touching project settings directly.
+- [x] Define theme resource with typography, color, spacing, and high-contrast tokens stored under `UI/Theme`.
+- [x] Register focus outline/focus highlight assets and expose accessibility toggles.
+- [x] Implement localization token access helper hooking into `TranslationServer` with fallback strategies.
+- [x] Document theming, localization workflow, and accessibility expectations.
+- [x] Provide setup script (if needed) to register theme resources without touching project settings directly.
 
 ### Milestone 2: Core Widget Library
 - [ ] Build base button, toggle, slider, and label controls using the shared theme and accessibility defaults (focus outlines, high-contrast mode).
