@@ -59,10 +59,10 @@
 - [x] Update documentation with glyph usage, HUD composition patterns, and analytics hooks.
 
 ### Milestone 5: Input Rebind UI
-- [ ] Implement Input Rebind UI scenes leveraging `InputService` rebind APIs and localization tokens.
-- [ ] Provide deterministic state persistence via `SettingsService` so rebinds survive restarts.
-- [ ] Emit analytics events for rebind success/failure (opt-in) through EventBus.
-- [ ] Document flow for integrating the rebind UI into `UIScreenManager`.
+- [x] Implement Input Rebind UI scenes leveraging `InputService` rebind APIs and localization tokens.
+- [x] Provide deterministic state persistence via `SettingsService` so rebinds survive restarts.
+- [x] Emit analytics events for rebind success/failure (opt-in) through EventBus.
+- [x] Document flow for integrating the rebind UI into `UIScreenManager`.
 
 ## Player Controller (2D)
 

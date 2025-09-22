@@ -12,6 +12,7 @@ const SETTINGS_SERVICE_PATH: NodePath = NodePath("/root/SettingsService")
 const THEME_SERVICE_PATH: NodePath = NodePath("/root/ThemeService")
 const LOCALIZATION_PATH: NodePath = NodePath("/root/ThemeLocalization")
 const InputConfig = preload("res://InputService/InputConfig.gd")
+const EventTopics = preload("res://EventBus/EventTopics.gd")
 
 var _action_rows: Dictionary[StringName, ActionRow] = {}
 var _container: VBoxContainer
@@ -122,9 +123,11 @@ func _on_rebind_started(action: StringName) -> void:
 func _on_rebind_finished(action: StringName) -> void:
     _update_row_binding(action)
     _persist_binding(action)
+    _publish_event(EventTopics.INPUT_REBIND_FINISHED, action, {} as Dictionary[StringName, Variant])
 
 func _on_rebind_failed(action: StringName, reason: String) -> void:
     _update_row_binding(action)
+    _publish_event(EventTopics.INPUT_REBIND_FAILED, action, {StringName("reason"): reason} as Dictionary[StringName, Variant])
 
 func _connect_input_service() -> void:
     var input_service := _input_service()
@@ -246,4 +249,15 @@ func _humanize_action(action: StringName) -> String:
 
 func _rebind_button_text(localization: _ThemeLocalization) -> String:
     return localization.translate(StringName("ui/rebind/change"), "Change") if localization else "Change"
+
+func _publish_event(topic: StringName, action: StringName, extra: Dictionary[StringName, Variant]) -> void:
+    if not Engine.has_singleton("EventBus"):
+        return
+    var payload := {
+        StringName("action"): action,
+        StringName("timestamp_ms"): Time.get_ticks_msec()
+    } as Dictionary[StringName, Variant]
+    for key in extra.keys():
+        payload[key] = extra[key]
+    Engine.get_singleton("EventBus").call("pub", topic, payload)
 *** End Patch
