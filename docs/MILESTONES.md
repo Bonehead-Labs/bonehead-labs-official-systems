@@ -41,10 +41,10 @@
 - [x] Provide setup script (if needed) to register theme resources without touching project settings directly.
 
 ### Milestone 2: Core Widget Library
-- [ ] Build base button, toggle, slider, and label controls using the shared theme and accessibility defaults (focus outlines, high-contrast mode).
-- [ ] Expose public factory methods for widget instancing with localization-aware text setters.
-- [ ] Add accessibility hooks (focus, state signals) and docstrings.
-- [ ] Supply per-widget README with usage snippets and analytics opt-in guidance.
+- [x] Build base button, toggle, slider, and label controls using the shared theme and accessibility defaults (focus outlines, high-contrast mode).
+- [x] Expose public factory methods for widget instancing with localization-aware text setters.
+- [x] Add accessibility hooks (focus, state signals) and docstrings.
+- [x] Supply per-widget README with usage snippets and analytics opt-in guidance.
 
 ### Milestone 3: Screen Manager & Navigation
 - [ ] Create `UIScreenManager` responsible for title/pause/options/etc. with scene composition.
