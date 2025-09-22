@@ -9,7 +9,7 @@ static func ensure_registered(save_settings: bool = true) -> void:
 	if not Engine.is_editor_hint():
 		return
 	var existing := _get_current_entry()
-	if existing and existing.get("path", "") == SCRIPT_PATH:
+	if existing.size() > 0 and existing.get("path", "") == SCRIPT_PATH:
 		return
 	ProjectSettings.set_setting(AUTOLOAD_SETTING, {"path": SCRIPT_PATH, "singleton": true})
 	if save_settings:
@@ -20,7 +20,7 @@ static func ensure_removed(save_settings: bool = true) -> void:
 	if not Engine.is_editor_hint():
 		return
 	var existing := _get_current_entry()
-	if existing and existing.get("path", "") != SCRIPT_PATH:
+	if existing.size() > 0 and existing.get("path", "") != SCRIPT_PATH:
 		return
 	if ProjectSettings.has_setting(AUTOLOAD_SETTING):
 		ProjectSettings.clear(AUTOLOAD_SETTING)
@@ -28,7 +28,9 @@ static func ensure_removed(save_settings: bool = true) -> void:
 		ProjectSettings.save()
 
 static func _get_current_entry() -> Dictionary:
-	if ProjectSettings.has_setting(AUTOLOAD_SETTING):
-		var value := ProjectSettings.get_setting(AUTOLOAD_SETTING)
-		return value if typeof(value) == TYPE_DICTIONARY else {}
+	if not ProjectSettings.has_setting(AUTOLOAD_SETTING):
+		return {}
+	var value: Variant = ProjectSettings.get_setting(AUTOLOAD_SETTING)
+	if typeof(value) == TYPE_DICTIONARY:
+		return value as Dictionary
 	return {}

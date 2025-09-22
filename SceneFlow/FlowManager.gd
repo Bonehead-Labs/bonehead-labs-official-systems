@@ -59,7 +59,9 @@ func push_scene(scene_path: String, payload_data: Variant = null, metadata: Dict
 	if err != OK:
 		_stack.pop_back()
 		return err
-	var previous_scene := _stack[_stack.size() - 2].scene_path if _stack.size() > 1 else StringName()
+	var previous_scene: String = ""
+	if _stack.size() > 1:
+		previous_scene = _stack[_stack.size() - 2].scene_path
 	_emit_stack_event(EventTopics.FLOW_SCENE_PUSHED, entry, {
 		"previous_scene": previous_scene
 	})
@@ -85,8 +87,9 @@ func replace_scene(scene_path: String, payload_data: Variant = null, metadata: D
 		else:
 			_stack.clear()
 		return err
+	var previous_scene: String = previous_entry.scene_path if previous_entry != null else ""
 	_emit_stack_event(EventTopics.FLOW_SCENE_REPLACED, active, {
-		"previous_scene": previous_entry.scene_path if previous_entry else StringName()
+		"previous_scene": previous_scene
 	})
 	return err
 
@@ -97,10 +100,11 @@ func replace_scene(scene_path: String, payload_data: Variant = null, metadata: D
 func pop_scene(payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
 	if _stack.size() <= 1:
 		return ERROR_NO_PREVIOUS_SCENE
-	var removed := _stack.pop_back()
+	var removed := _stack[_stack.size() - 1]
+	_stack.pop_back()
 	var target := _stack[_stack.size() - 1]
 	if payload_data != null or metadata.size() > 0:
-		target.payload = FlowPayload.new(payload_data, metadata, removed.scene_path)
+		target.payload = FlowPayload.new(payload_data, metadata, StringName(removed.scene_path))
 	var err := _change_to(target)
 	if err != OK:
 		_stack.append(removed)
@@ -113,7 +117,9 @@ func pop_scene(payload_data: Variant = null, metadata: Dictionary = {}) -> Error
 ## Peeks at the current stack entry.
 ## @return FlowStackEntry describing the active scene.
 func peek_scene() -> FlowStackEntry:
-	return _stack[-1] if _stack.size() > 0 else null
+	if _stack.is_empty():
+		return null
+	return _stack[_stack.size() - 1]
 
 ## Clears the stack, optionally retaining the active scene.
 ## @param keep_active Whether to keep the active scene entry.
@@ -132,8 +138,10 @@ func _create_entry(scene_path: String, payload_data: Variant, metadata: Dictiona
 func _last_scene_path() -> StringName:
 	if _stack.is_empty():
 		var current_scene := _get_active_scene()
-		return current_scene.scene_file_path if current_scene else StringName()
-	return _stack[-1].scene_path
+		if current_scene == null:
+			return StringName()
+		return StringName(current_scene.scene_file_path)
+	return StringName(_stack[_stack.size() - 1].scene_path)
 
 func _change_to(entry: FlowStackEntry) -> Error:
 	if entry.scene_path.is_empty():
