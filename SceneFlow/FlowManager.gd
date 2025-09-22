@@ -242,6 +242,10 @@ func _complete_pending_load_success() -> void:
 		_hide_loading_screen(true, {"scene_path": entry.scene_path})
 		_reset_pending_state()
 		return
+	if _pending_operation == StringName("push") and _stack.size() > 0:
+		_stack.pop_back()
+	elif _pending_operation == StringName("replace") and _pending_previous_entry != null and _stack.size() > 0:
+		_stack[_stack.size() - 1] = _pending_previous_entry
 	_emit_scene_error(entry.scene_path, err, "Async scene activation failed")
 	_emit_loading_event(EventTopics.FLOW_LOADING_FAILED, {"error": err})
 	_hide_loading_screen(false, {"scene_path": entry.scene_path, "error": err})
@@ -252,7 +256,10 @@ func _handle_load_failure() -> void:
 	if handle == null:
 		return
 	_emit_loading_event(EventTopics.FLOW_LOADING_FAILED, {"error": handle.error})
+	if _pending_operation == StringName("replace") and _pending_previous_entry != null and _stack.size() > 0:
+		_stack[_stack.size() - 1] = _pending_previous_entry
 	_hide_loading_screen(false, {"scene_path": handle.scene_path, "error": handle.error})
+	_emit_scene_error(handle.scene_path, handle.error, "Async scene load failed")
 	_reset_pending_state()
 
 func _handle_load_cancelled() -> void:
