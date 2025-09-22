@@ -52,3 +52,13 @@ Set `GODOT_BIN` if the project requires a non-default Godot binary path. Formatt
 - Include reasoning for design decisions when deviating from defaults.
 - Reference any new EventBus topics or analytics payloads in module documentation.
 - Keep commits focused; avoid mixing unrelated changes to simplify reviews.
+
+## Optional Git Hooks
+
+A ready-to-use commit message hook lives under `.githooks/commit-msg`. Enable it locally:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+This keeps enforcement opt-in and repository-scoped without touching global Git settings.

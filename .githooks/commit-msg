@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+COMMIT_MSG_FILE="$1"
+FIRST_LINE="$(head -n1 "${COMMIT_MSG_FILE}" | tr -d '\r')"
+
+# Conventional Commit regex: type(optional-scope)!?: space description
+CC_REGEX='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9_.-]+\))?!?: .+'
+
+if [[ "${FIRST_LINE}" =~ ${CC_REGEX} ]]; then
+  exit 0
+fi
+
+echo "✗ Commit message must follow Conventional Commits." >&2
+echo "  Example: feat(flow): add push_scene API" >&2
+echo "  Current: '${FIRST_LINE}'" >&2
+exit 1
