@@ -1,5 +1,5 @@
-class_name WidgetFactory
-extends Node
+class_name _WidgetFactory
+extends RefCounted
 
 ## WidgetFactory instantiates themed widgets with sensible defaults.
 ## Optional autoload for convenience, or instantiate ad-hoc.
