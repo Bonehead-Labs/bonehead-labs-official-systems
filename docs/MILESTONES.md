@@ -116,10 +116,10 @@
 - [x] Document status effect authoring, stacking rules, and deterministic seed usage when relying on chance.
 
 ### Milestone 4: Projectiles, Factions, and Object Pooling
-- [ ] Build projectile base scene with pooling support and configurable motion scripts via the shared object pooling utility.
-- [ ] Implement faction/team manager singleton with registration API.
-- [ ] Integrate projectiles with damage pipeline including friendly-fire rules.
-- [ ] Document extending projectile behaviours and faction setup with pooling considerations.
+- [x] Build projectile base scene with pooling support and configurable motion scripts via the shared object pooling utility.
+- [x] Implement faction/team manager singleton with registration API.
+- [x] Integrate projectiles with damage pipeline including friendly-fire rules.
+- [x] Document extending projectile behaviours and faction setup with pooling considerations.
 
 ### Milestone 5: Death Handling & Integration
 - [x] Provide death handler callbacks (death animation, loot events).

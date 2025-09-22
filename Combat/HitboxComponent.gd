@@ -6,6 +6,7 @@ extends Area2D
 
 const EventTopics = preload("res://EventBus/EventTopics.gd")
 const DamageInfoScript = preload("res://Combat/DamageInfo.gd")
+const FactionManagerScript = preload("res://Combat/FactionManager.gd")
 
 signal hitbox_activated(hitbox: Variant)
 signal hitbox_deactivated(hitbox: Variant)
@@ -161,6 +162,11 @@ func get_source_node() -> Node:
 
 ## Check if this hitbox can damage a specific faction
 func can_damage_faction(_other_faction: String) -> bool:
-	# For now, all hitboxes can damage all factions
-	# This could be extended with faction relationships
-	return true
+	# Use FactionManager for proper faction relationships
+	if Engine.has_singleton("FactionManager"):
+		var faction_manager = Engine.get_singleton("FactionManager")
+		if faction_manager and faction_manager.has_method("can_damage"):
+			return faction_manager.can_damage(faction, _other_faction)
+
+	# Fallback: only damage different factions
+	return faction != _other_faction

@@ -71,6 +71,11 @@ const COMBAT_HITBOX_ACTIVATED : StringName = &"combat/hitbox_activated"  # {hitb
 const COMBAT_HITBOX_DEACTIVATED : StringName = &"combat/hitbox_deactivated" # {hitbox_faction, hitbox_position, timestamp_ms}
 const COMBAT_ENTITY_DEATH     : StringName = &"combat/entity_death"      # {entity_name, entity_type, faction, position, damage_source, damage_type, timestamp_ms}
 
+# Faction System Events
+const FACTION_REGISTERED       : StringName = &"faction/registered"       # {faction, timestamp_ms}
+const FACTION_UNREGISTERED     : StringName = &"faction/unregistered"     # {faction, timestamp_ms}
+const FACTION_RELATIONSHIP_CHANGED : StringName = &"faction/relationship_changed" # {faction_a, faction_b, relationship, timestamp_ms}
+
 # ───────────────────────────────────────────────────────────────────────────────
 # ENEMY (spawn, perception, death)
 # ───────────────────────────────────────────────────────────────────────────────
@@ -196,6 +201,7 @@ static var ALL : Array[StringName] = [
     COMBAT_STATUS_APPLIED, COMBAT_STATUS_EXPIRED, COMBAT_WEAPON_SWAPPED,
     COMBAT_PROJECTILE_FIRED, COMBAT_PROJECTILE_HIT, COMBAT_HURTBOX_HIT,
     COMBAT_HITBOX_ACTIVATED, COMBAT_HITBOX_DEACTIVATED, COMBAT_ENTITY_DEATH,
+    FACTION_REGISTERED, FACTION_UNREGISTERED, FACTION_RELATIONSHIP_CHANGED,
 
     # scene
     SCENE_WILL_CHANGE, SCENE_DID_CHANGE, SCENE_RELOADED, SCENE_CHECKPOINT_REACHED,

@@ -1019,3 +1019,513 @@ func load_combat_state(data: Dictionary) -> void:
 ```
 
 This Combat System provides a solid foundation for health management and damage calculation while remaining flexible for various game types and combat styles.
+
+## Death Handling & Entity Lifecycle
+
+The DeathHandler component manages the complete entity death lifecycle - from death detection through animation, loot drops, and respawning.
+
+### DeathHandler Component
+
+Handles entity death with configurable behavior for animations, loot, and respawning.
+
+```gdscript
+# Attach to entities that can die
+var death_handler := DeathHandler.new()
+death_handler.death_animation_scene = preload("res://effects/DeathExplosion.tscn")
+death_handler.auto_drop_loot = true
+death_handler.respawn_enabled = true
+death_handler.respawn_delay = 3.0
+death_handler.respawn_position = Vector2(100, 100)
+entity.add_child(death_handler)
+
+# Connect to death events
+death_handler.death_started.connect(_on_entity_death_started)
+death_handler.loot_dropped.connect(_on_loot_dropped)
+death_handler.respawn_completed.connect(_on_entity_respawned)
+```
+
+#### Death Sequence Flow
+
+1. **Death Detection**: HealthComponent emits `died` signal
+2. **Death Started**: DeathHandler begins death sequence
+3. **Animation**: Optional death animation plays
+4. **Loot Drop**: Items spawn based on loot table or defaults
+5. **Entity Cleanup**: Disable physics, hide visuals, disable hurtboxes
+6. **Respawn**: After delay, reset and reposition entity (optional)
+
+#### DeathHandler Properties
+
+```gdscript
+@export var death_animation_scene: PackedScene      # Optional death effect
+@export var death_animation_duration: float = 2.0   # Animation length
+@export var auto_drop_loot: bool = true             # Enable loot drops
+@export var loot_table_path: String = ""            # Loot table resource path
+@export var respawn_enabled: bool = false           # Enable respawning
+@export var respawn_delay: float = 3.0             # Time before respawn
+@export var respawn_position: Vector2 = Vector2.ZERO # Respawn location
+@export var emit_analytics: bool = true             # Analytics events
+@export var emit_debug_info: bool = false           # Debug logging
+```
+
+#### Death Events
+
+```gdscript
+# Death lifecycle events
+death_handler.death_started.connect(func(entity, death_info):
+    # Entity just died
+    play_death_sound()
+    screen_shake()
+)
+
+death_handler.death_animation_started.connect(func(entity, animation_name):
+    # Death animation began
+    print("Playing death animation: ", animation_name)
+)
+
+death_handler.loot_dropped.connect(func(entity, loot_items):
+    # Loot items spawned
+    for item in loot_items:
+        add_loot_to_world(item, entity.global_position)
+)
+
+death_handler.respawn_started.connect(func(entity, respawn_pos):
+    # Respawn countdown began
+    show_respawn_timer(respawn_pos)
+)
+
+death_handler.respawn_completed.connect(func(entity, respawn_pos):
+    # Entity respawned
+    play_respawn_effect(respawn_pos)
+    reset_camera_target(entity)
+)
+```
+
+### Loot System Integration
+
+The DeathHandler supports loot drops through the Items & Economy system.
+
+#### Loot Table Integration
+
+```gdscript
+# Use a loot table for drops
+death_handler.loot_table_path = "res://data/loot_tables/enemy_basic.tres"
+
+# Loot table would be a resource with weighted item drops
+# When entity dies, DeathHandler calls loot table to generate drops
+```
+
+#### Default Loot Generation
+
+```gdscript
+# Override default loot generation
+func _generate_default_loot(entity: Node) -> Array:
+    # Generate loot based on entity type, level, etc.
+    match entity.enemy_type:
+        "goblin":
+            return [{"item_id": "gold_coin", "quantity": 5}]
+        "orc":
+            return [
+                {"item_id": "gold_coin", "quantity": 15},
+                {"item_id": "rusty_sword", "quantity": 1}
+            ]
+    return []
+```
+
+### Respawn System
+
+Configurable respawning with FlowManager integration for scene transitions.
+
+#### Basic Respawning
+
+```gdscript
+# Simple respawn at fixed position
+death_handler.set_respawn_enabled(true, 3.0, checkpoint_position)
+```
+
+#### Scene-Based Respawning
+
+```gdscript
+# Respawn with scene transition
+death_handler.respawn_scene_transition = true
+death_handler.respawn_transition_name = "fade_to_black"
+
+# This would integrate with FlowManager for proper scene reloading
+```
+
+#### Respawn Callbacks
+
+```gdscript
+func _on_entity_respawned(entity: Node, respawn_position: Vector2) -> void:
+    # Custom respawn logic
+    entity.velocity = Vector2.ZERO
+    entity.play_idle_animation()
+
+    # Notify other systems
+    EventBus.pub(EventTopics.PLAYER_RESPAWNED, {
+        "position": respawn_position,
+        "entity": entity
+    })
+```
+
+### Analytics & Debugging
+
+Death events are tracked through EventBus for analytics and debugging.
+
+#### Death Analytics Events
+
+```gdscript
+# Subscribe to death analytics
+EventBus.sub("combat/entity_death", func(payload):
+    # payload: {entity_name, entity_type, faction, position, damage_source, damage_type, timestamp_ms}
+    Analytics.track_event("entity_death", payload)
+    print("Entity died: ", payload.entity_name, " by ", payload.damage_source)
+)
+
+# Subscribe to lifecycle events for debugging
+EventBus.sub("combat/status_effect_applied", _on_status_applied)
+EventBus.sub("combat/hurtbox_hit", _on_damage_taken)
+EventBus.sub("combat/entity_death", _on_entity_death)
+```
+
+#### Debug Information
+
+```gdscript
+# Enable debug logging
+death_handler.emit_debug_info = true
+
+# Will log:
+# "DeathHandler: Starting death animation for Enemy1"
+# "DeathHandler: Dropped 3 loot items for Enemy1"
+# "DeathHandler: Starting respawn for Enemy1 in 3 seconds"
+# "DeathHandler: Performing respawn for Enemy1"
+```
+
+### Entity State Management
+
+DeathHandler manages entity state transitions between alive, dying, and dead.
+
+#### State Transitions
+
+```gdscript
+enum EntityState { ALIVE, DYING, DEAD, RESPAWNING }
+
+func get_entity_state(entity: Node) -> EntityState:
+    var death_handler = entity.get_node_or_null("DeathHandler")
+    if not death_handler:
+        return EntityState.ALIVE
+
+    if death_handler.is_entity_dying():
+        return EntityState.DYING
+
+    if not entity.visible:  # Dead entities are hidden
+        if death_handler.respawn_enabled:
+            return EntityState.RESPAWNING
+        else:
+            return EntityState.DEAD
+
+    return EntityState.ALIVE
+```
+
+#### State-Based Behavior
+
+```gdscript
+func update_entity_ai(entity: Node) -> void:
+    var state = get_entity_state(entity)
+
+    match state:
+        EntityState.ALIVE:
+            # Normal AI behavior
+            process_ai(entity)
+        EntityState.DYING:
+            # Death animation in progress
+            pass
+        EntityState.DEAD:
+            # Entity permanently dead
+            remove_from_ai_system(entity)
+        EntityState.RESPAWNING:
+            # Waiting for respawn
+            show_respawn_indicator(entity)
+```
+
+### FlowManager Integration
+
+For scene-based respawning and game over handling.
+
+#### Scene Respawning
+
+```gdscript
+# When player dies, transition to game over scene
+func _on_player_died(source: Node, damage_info: DamageInfo) -> void:
+    if source == player_entity:
+        # Player died - go to game over
+        FlowManager.push_scene("res://scenes/GameOver.tscn", {
+            "death_cause": damage_info.source_name,
+            "final_score": game_score
+        })
+```
+
+#### Checkpoint Respawning
+
+```gdscript
+# Respawn at last checkpoint
+func _on_player_respawned(entity: Node, respawn_position: Vector2) -> void:
+    # Update checkpoint system
+    if Engine.has_singleton("World"):
+        var world = Engine.get_singleton("World")
+        world.call("update_checkpoint", respawn_position)
+
+    # Reset camera to respawn position
+    camera.global_position = respawn_position
+    camera.follow_target = entity
+```
+
+### Lifecycle Expectations
+
+#### For Combat System Consumers
+
+**Systems that consume combat events should expect:**
+
+1. **Event Ordering**: Events fire in sequence (damage → death → respawn)
+2. **State Consistency**: Entity state is consistent during event callbacks
+3. **Thread Safety**: Events are emitted on main thread during physics process
+4. **Null Safety**: Entity references may become invalid after death
+
+#### For DeathHandler Implementers
+
+**When implementing custom death behavior:**
+
+1. **Call Super**: Always call parent `_complete_death_sequence()` for cleanup
+2. **State Management**: Use `_set_entity_dead_state()` for consistent state
+3. **Event Emission**: Emit signals before state changes for UI responsiveness
+4. **Resource Cleanup**: Clean up effects, timers, and references on death
+
+#### Example Custom DeathHandler
+
+```gdscript
+class_name BossDeathHandler extends DeathHandler
+
+func _complete_death_sequence(entity: Node, death_info: Dictionary) -> void:
+    # Custom boss death behavior
+    play_boss_defeat_music()
+    spawn_victory_particles(entity.global_position)
+    unlock_next_level()
+
+    # Call parent for standard cleanup
+    super._complete_death_sequence(entity, death_info)
+
+func _generate_default_loot(entity: Node) -> Array:
+    # Boss drops special loot
+    return [
+        {"item_id": "boss_soul", "quantity": 1},
+        {"item_id": "gold_coin", "quantity": 100},
+        {"item_id": "legendary_sword", "quantity": 1}
+    ]
+```
+
+This death handling system provides comprehensive lifecycle management for entities, from death detection through respawning, with full integration with other game systems.
+
+## FactionManager
+
+The FactionManager singleton manages faction relationships and enables team-based gameplay mechanics.
+
+### Faction Relationships
+
+```gdscript
+# Basic faction setup
+FactionManager.register_faction("undead")
+FactionManager.register_faction("holy")
+
+# Set relationships
+FactionManager.set_relationship("undead", "holy", FactionManager.Relationship.ENEMY)
+FactionManager.set_relationship("holy", "undead", FactionManager.Relationship.ENEMY)
+
+# Create alliances
+FactionManager.create_faction_group(["elves", "dwarves", "humans"], "alliance")
+
+# Check relationships
+if FactionManager.can_damage("undead", "holy"):
+    print("Undead can damage holy units")
+```
+
+### Built-in Factions
+
+- **neutral**: Default faction for environment objects
+- **player**: Player character and allies
+- **enemy**: Standard enemies
+- **ally**: NPC allies
+- **environment**: Environmental hazards
+
+### Relationship Types
+
+- **NEUTRAL**: Can damage each other, no special relationship
+- **ALLY**: Cannot damage each other
+- **ENEMY**: Can damage each other (default for player vs enemy)
+- **IGNORE**: Cannot interact at all
+
+### Advanced Features
+
+```gdscript
+# Declare war (makes allies enemies too)
+FactionManager.declare_war("orcs", "elves")
+
+# Get faction information
+var enemies = FactionManager.get_enemy_factions("player")
+var allies = FactionManager.get_allied_factions("elves")
+
+# Debug faction relationships
+FactionManager.debug_print_relationships()
+```
+
+### Integration with Combat
+
+The FactionManager automatically integrates with hurtboxes and hitboxes:
+
+```gdscript
+# Hurtbox faction filtering
+hurtbox.faction = "player"
+hurtbox.friendly_fire = false  # Won't take damage from other players
+
+# Hitbox faction checking
+if hitbox.can_damage_faction("enemy"):
+    # Can damage enemies
+    hitbox.activate()
+```
+
+## BaseProjectile System
+
+Configurable projectile system with multiple motion types, designed for object pooling and extensibility.
+
+### Motion Types
+
+- **LINEAR**: Straight line movement
+- **HOMING**: Seeks target with configurable strength
+- **ARC**: Parabolic arc trajectory
+- **WAVE**: Sinusoidal wave motion
+- **BOUNCE**: Bounces off surfaces
+- **SPIRAL**: Spiral motion pattern
+
+### Basic Usage
+
+```gdscript
+# Create and configure projectile
+var projectile = BaseProjectile.new()
+projectile.motion_type = BaseProjectile.MotionType.HOMING
+projectile.speed = 400.0
+projectile.damage_amount = 25.0
+projectile.faction = "player"
+projectile.homing_strength = 2.0
+
+# Launch projectile
+projectile.launch(Vector2.RIGHT, 400.0, target_enemy)
+add_child(projectile)
+```
+
+### Motion-Specific Configuration
+
+```gdscript
+# Homing projectile
+projectile.motion_type = BaseProjectile.MotionType.HOMING
+projectile.homing_strength = 1.5  # How aggressively it turns
+
+# Arc projectile
+projectile.motion_type = BaseProjectile.MotionType.ARC
+projectile.arc_height = 80.0  # Height of the arc
+
+# Wave projectile
+projectile.motion_type = BaseProjectile.MotionType.WAVE
+projectile.wave_frequency = 3.0
+projectile.wave_amplitude = 30.0
+
+# Bouncing projectile
+projectile.motion_type = BaseProjectile.MotionType.BOUNCE
+projectile.bounce_count = 5
+```
+
+### Advanced Features
+
+```gdscript
+# Piercing projectiles
+projectile.pierce_count = 3  # Hits up to 3 enemies
+
+# Knockback on hit
+projectile.knockback_force = Vector2(200, -150)
+
+# Visual effects
+projectile.trail_effect = preload("res://effects/ProjectileTrail.tscn")
+projectile.impact_effect = preload("res://effects/ImpactExplosion.tscn")
+
+# Dynamic configuration
+projectile.set_damage(50.0, DamageInfo.DamageType.FIRE)
+projectile.set_faction("enemy")
+projectile.set_knockback(Vector2(300, -200))
+```
+
+### Object Pooling Integration
+
+```gdscript
+# Projectile pool manager
+class ProjectilePool:
+    var pool: Array[BaseProjectile] = []
+    var scene: PackedScene
+
+    func get_projectile() -> BaseProjectile:
+        if pool.is_empty():
+            return scene.instantiate()
+        else:
+            return pool.pop_back()
+
+    func return_projectile(projectile: BaseProjectile) -> void:
+        projectile.hide()
+        pool.append(projectile)
+
+# Usage
+var pool = ProjectilePool.new()
+pool.scene = preload("res://Combat/BaseProjectile.tscn")
+
+var projectile = pool.get_projectile()
+projectile.launch(direction)
+# When projectile.destroy() is called, return to pool instead of queue_free
+```
+
+### Analytics Integration
+
+Projectiles automatically emit EventBus events for analytics:
+
+```gdscript
+# Projectile fired
+EventBus.sub("combat/projectile_fired", func(payload):
+    Analytics.track_event("projectile_fired", payload)
+)
+
+# Projectile hit
+EventBus.sub("combat/projectile_hit", func(payload):
+    Analytics.track_event("projectile_hit", payload)
+)
+```
+
+### Extending Projectiles
+
+```gdscript
+class FireballProjectile extends BaseProjectile:
+    func _ready():
+        super._ready()
+        # Add fire-specific setup
+        damage_type = DamageInfo.DamageType.FIRE
+        # Add particle effects, etc.
+
+    func on_hit(target: Node):
+        super.on_hit(target)
+        # Add fire-specific effects
+        target.apply_burn_effect()
+        create_fire_explosion()
+```
+
+### Performance Considerations
+
+- **Object Pooling**: Essential for projectile-heavy games
+- **Lifetime Management**: Automatic cleanup prevents memory leaks
+- **Collision Layers**: Use appropriate collision masks for performance
+- **Motion Complexity**: Simpler motion types perform better
+- **Analytics Throttling**: Consider throttling events for high-fire-rate weapons
+
+This faction and projectile system provides the foundation for complex combat scenarios with team-based gameplay and varied projectile behaviors.
