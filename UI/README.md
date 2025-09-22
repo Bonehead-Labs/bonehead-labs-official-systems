@@ -30,3 +30,10 @@ Reusable controls live under `res://UI/Widgets/`:
 - `WidgetFactory.gd` exposes `create_button`, `create_toggle`, `create_slider`, and `create_label`
 
 All widgets subscribe to `ThemeService.theme_changed` so they react to palette updates and high-contrast toggles automatically.
+
+## Screen Manager
+
+- `UIScreenManager.gd` manages UI screen stacks with transition support.
+- Register screens via `register_screen(id, scene)` and navigate with `push_screen`, `replace_screen`, `pop_screen`.
+- Integrates with the shared transition library when a transition player is supplied.
+- Publishes `UI_SCREEN_PUSHED` / `UI_SCREEN_POPPED` EventBus topics when available.
