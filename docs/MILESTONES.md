@@ -20,10 +20,10 @@
 - [x] Implement error fallback behaviour and emit diagnostics via EventBus.
 
 ### Milestone 3: Shared Transition FX Integration
-- [ ] Create reusable transition resource/library with enter/exit sequences (leveraging cross-cutting transition module once delivered).
-- [ ] Wire FlowManager to trigger transition FX around stack mutations with configurable defaults.
-- [ ] Publish transition completion signals for UI subscribers and analytics hooks.
-- [ ] Document extension hooks for custom transitions.
+- [x] Create reusable transition resource/library with enter/exit sequences (leveraging cross-cutting transition module once delivered).
+- [x] Wire FlowManager to trigger transition FX around stack mutations with configurable defaults.
+- [x] Publish transition completion signals for UI subscribers and analytics hooks.
+- [x] Document extension hooks for custom transitions.
 
 ### Milestone 4: World & Save Hooks
 - [ ] Invoke `World.CheckpointManager` checkpoint updates during scene swap events when available.
