@@ -131,8 +131,8 @@ func _create_entry(scene_path: String, payload_data: Variant, metadata: Dictiona
 
 func _last_scene_path() -> StringName:
 	if _stack.is_empty():
-		var current_scene := get_tree().current_scene
-		return current_scene.scene_file_path if current_scene else StringName()
+	var current_scene := _get_active_scene()
+	return current_scene.scene_file_path if current_scene else StringName()
 	return _stack[-1].scene_path
 
 func _change_to(entry: FlowStackEntry) -> Error:
@@ -147,7 +147,7 @@ func _change_to(entry: FlowStackEntry) -> Error:
 		_emit_scene_error(entry.scene_path, ERR_FILE_CANT_OPEN, "Scene could not be loaded as PackedScene.")
 		return ERR_FILE_CANT_OPEN
 	about_to_change.emit(entry.scene_path, entry)
-	var err := get_tree().change_scene_to_packed(packed)
+	var err := _perform_scene_change(packed)
 	if err != OK:
 		_emit_scene_error(entry.scene_path, err, "change_scene_to_packed failed" )
 		return err
@@ -159,7 +159,7 @@ func _deliver_payload(entry: FlowStackEntry) -> void:
 	var payload := entry.payload
 	if payload == null:
 		return
-	var active_scene := get_tree().current_scene
+	var active_scene := _get_active_scene()
 	if active_scene == null:
 		return
 	active_scene.set_meta(&"flow_payload", payload)
@@ -179,6 +179,12 @@ func _emit_stack_event(topic: StringName, entry: FlowStackEntry, extra: Dictiona
 	for key in extra.keys():
 		payload[key] = extra[key]
 	_emit_analytics(topic, payload)
+
+func _perform_scene_change(packed: PackedScene) -> Error:
+	return get_tree().change_scene_to_packed(packed)
+
+func _get_active_scene() -> Node:
+	return get_tree().current_scene
 
 func _emit_analytics(topic: StringName, payload: Dictionary) -> void:
 	if not analytics_enabled:
