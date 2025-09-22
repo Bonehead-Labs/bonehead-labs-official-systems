@@ -168,7 +168,7 @@ func launch(direction: Vector2, start_speed: float = -1.0, target: Node2D = null
 			"damage_type": DamageInfoScript.DamageType.keys()[damage_type],
 			"position": global_position,
 			"velocity": velocity,
-			"target": _target.name if _target else "none",
+			"target": _target.name if _target else StringName("none"),
 			"timestamp_ms": Time.get_ticks_msec()
 		})
 
