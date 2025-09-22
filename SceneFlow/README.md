@@ -30,6 +30,10 @@ All functions are strongly typed and return `Error` codes when appropriate.
   - Registers a loading screen scene (must extend `FlowLoadingScreen`) and optional parent attachment path.
 - `clear_loading_screen() -> void`
   - Removes previously configured loading screen data and frees any instantiated instance.
+- `configure_transition_library(library: FlowTransitionLibrary, player_scene: PackedScene) -> void`
+  - Registers the shared transition definitions and player scene for playback.
+- `clear_transition_library() -> void`
+  - Removes transition configuration and frees any instantiated player.
 - `peek_scene() -> FlowStackEntry`
   - Returns the active stack entry (scene path + payload metadata).
 - `clear_stack(keep_active: bool = true) -> void`
@@ -58,6 +62,7 @@ Destination scenes can implement an optional `receive_flow_payload(payload: Flow
 - `loading_progress(scene_path: String, progress: float, metadata: Dictionary)`
 - `loading_finished(scene_path: String, handle: FlowAsyncLoader.LoadHandle)`
 - `loading_cancelled(scene_path: String, handle: FlowAsyncLoader.LoadHandle)`
+- `transition_complete(scene_path: String, metadata: Dictionary)`
 
 Use signals to drive loading screens, transition effects, or error telemetry.
 

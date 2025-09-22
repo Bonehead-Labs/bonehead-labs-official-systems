@@ -5,6 +5,7 @@ const FlowAsyncLoader = preload("res://SceneFlow/AsyncSceneLoader.gd")
 const FlowLoadingScreen = preload("res://SceneFlow/LoadingScreenContract.gd")
 const FlowTransitionLibrary = preload("res://SceneFlow/Transitions/TransitionLibrary.gd")
 const FlowTransitionPlayer = preload("res://SceneFlow/Transitions/TransitionPlayer.gd")
+const FlowTransition = preload("res://SceneFlow/Transitions/TransitionResource.gd")
 
 ## FlowManager is an autoload singleton responsible for high-level scene navigation.
 ## It provides a stack-based API for pushing, popping, and replacing scenes.
@@ -310,7 +311,6 @@ func _ensure_loading_screen(handle: FlowAsyncLoader.LoadHandle) -> void:
     _loading_screen_instance = instance
     parent.add_child(instance)
     _loading_screen_instance.begin_loading(handle)
-    _play_transition(false, _pending_entry)
 
 func _update_loading_screen(progress: float, metadata: Dictionary) -> void:
 	if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
@@ -380,7 +380,8 @@ func _play_transition(is_enter: bool, entry: FlowStackEntry) -> void:
     _transition_metadata = {
         "transition_name": transition.name,
         "enter": is_enter,
-        "scene_path": entry.scene_path
+        "scene_path": entry.scene_path,
+        "payload_metadata": entry.payload.metadata.duplicate(true) if entry and entry.payload else {}
     }
     _transition_player.play_transition(transition, is_enter)
 
@@ -405,6 +406,7 @@ func _on_transition_finished(transition: FlowTransition, direction: String) -> v
     transition_complete.emit(StringName(metadata.get("scene_path", "")), metadata)
     if analytics_enabled:
         _emit_analytics(EventTopics.FLOW_TRANSITION_COMPLETED, metadata)
+    _transition_metadata = {}
 
 func _perform_scene_change(packed: PackedScene) -> Error:
 	return get_tree().change_scene_to_packed(packed)
@@ -461,20 +463,21 @@ func has_pending_load() -> bool:
 	return _pending_load != null and _pending_load.status == FlowAsyncLoader.LoadStatus.LOADING
 
 func push_scene_async(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
-	if has_pending_load():
-		return ERR_BUSY
-	var handle := _async_loader.start(scene_path, metadata)
-	if handle.status == FlowAsyncLoader.LoadStatus.FAILED:
-		return handle.error
+    if has_pending_load():
+        return ERR_BUSY
+    var handle := _async_loader.start(scene_path, metadata)
+    if handle.status == FlowAsyncLoader.LoadStatus.FAILED:
+        return handle.error
 	_pending_entry = _create_entry(scene_path, payload_data, metadata)
 	_pending_previous_entry = null
 	_pending_operation = StringName("push")
-	_pending_load = handle
-	_pending_metadata = metadata.duplicate(true)
-	loading_started.emit(scene_path, handle)
-	_ensure_loading_screen(handle)
-	_emit_loading_event(EventTopics.FLOW_LOADING_STARTED)
-	return OK
+    _pending_load = handle
+    _pending_metadata = metadata.duplicate(true)
+    loading_started.emit(scene_path, handle)
+    _ensure_loading_screen(handle)
+    _play_transition(false, _pending_entry)
+    _emit_loading_event(EventTopics.FLOW_LOADING_STARTED)
+    return OK
 
 func replace_scene_async(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
 	if has_pending_load():
@@ -485,12 +488,13 @@ func replace_scene_async(scene_path: String, payload_data: Variant = null, metad
 	_pending_entry = _create_entry(scene_path, payload_data, metadata)
 	_pending_previous_entry = _stack[-1] if _stack.size() > 0 else null
 	_pending_operation = StringName("replace")
-	_pending_load = handle
-	_pending_metadata = metadata.duplicate(true)
-	loading_started.emit(scene_path, handle)
-	_ensure_loading_screen(handle)
-	_emit_loading_event(EventTopics.FLOW_LOADING_STARTED)
-	return OK
+    _pending_load = handle
+    _pending_metadata = metadata.duplicate(true)
+    loading_started.emit(scene_path, handle)
+    _ensure_loading_screen(handle)
+    _play_transition(false, _pending_entry)
+    _emit_loading_event(EventTopics.FLOW_LOADING_STARTED)
+    return OK
 
 func cancel_pending_load() -> void:
 	if not has_pending_load():
