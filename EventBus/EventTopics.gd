@@ -29,6 +29,14 @@ const UI_TOOLTIP_SHOW         : StringName = &"ui/tooltip_show"          # {text
 const UI_TOOLTIP_HIDE         : StringName = &"ui/tooltip_hide"          # {}
 
 # ───────────────────────────────────────────────────────────────────────────────
+# SCENE FLOW (scene stack + transitions)
+# ───────────────────────────────────────────────────────────────────────────────
+const FLOW_SCENE_PUSHED       : StringName = &"flow/scene_pushed"        # {scene_path, from?, stack_size, metadata?}
+const FLOW_SCENE_REPLACED     : StringName = &"flow/scene_replaced"      # {scene_path, from?, stack_size, metadata?}
+const FLOW_SCENE_POPPED       : StringName = &"flow/scene_popped"        # {scene_path, to?, stack_size, metadata?}
+const FLOW_SCENE_ERROR        : StringName = &"flow/scene_error"         # {scene_path, code, message}
+
+# ───────────────────────────────────────────────────────────────────────────────
 # PLAYER (player-related events)
 # ───────────────────────────────────────────────────────────────────────────────
 const PLAYER_SPAWNED          : StringName = &"player/spawned"           # {pos?, id?}
@@ -149,6 +157,9 @@ static var ALL : Array[StringName] = [
     UI_TOAST, UI_PROMPT_OPEN, UI_PROMPT_CHOICE, UI_MODAL_OPEN, UI_MODAL_CLOSE,
     UI_SCREEN_PUSHED, UI_SCREEN_POPPED, UI_HUD_SHOW, UI_HUD_HIDE,
     UI_OBJECTIVE_UPDATE, UI_TOOLTIP_SHOW, UI_TOOLTIP_HIDE,
+
+    # scene flow
+    FLOW_SCENE_PUSHED, FLOW_SCENE_REPLACED, FLOW_SCENE_POPPED, FLOW_SCENE_ERROR,
 
     # player
     PLAYER_SPAWNED, PLAYER_DESPAWNED, PLAYER_DAMAGED, PLAYER_HEALED, PLAYER_DIED,

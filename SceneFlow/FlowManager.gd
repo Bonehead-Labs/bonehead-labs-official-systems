@@ -37,6 +37,8 @@ class FlowStackEntry extends RefCounted:
 		self.created_ms = Time.get_ticks_msec()
 
 var _stack: Array[FlowStackEntry] = []
+## When true, FlowManager will publish analytics events to EventBus.
+var analytics_enabled: bool = false
 
 func _ready() -> void:
 	if _stack.is_empty():
@@ -56,6 +58,11 @@ func push_scene(scene_path: String, payload_data: Variant = null, metadata: Dict
 	var err := _change_to(entry)
 	if err != OK:
 		_stack.pop_back()
+		return err
+	var previous_scene := _stack[_stack.size() - 2].scene_path if _stack.size() > 1 else StringName()
+	_emit_stack_event(EventTopics.FLOW_SCENE_PUSHED, entry, {
+		"previous_scene": previous_scene
+	})
 	return err
 
 ## Replaces the current scene with a new one.
@@ -77,6 +84,10 @@ func replace_scene(scene_path: String, payload_data: Variant = null, metadata: D
 			_stack[_stack.size() - 1] = previous_entry
 		else:
 			_stack.clear()
+		return err
+	_emit_stack_event(EventTopics.FLOW_SCENE_REPLACED, active, {
+		"previous_scene": previous_entry.scene_path if previous_entry else StringName()
+	})
 	return err
 
 ## Pops the current scene and returns to the previous one.
@@ -93,6 +104,10 @@ func pop_scene(payload_data: Variant = null, metadata: Dictionary = {}) -> Error
 	var err := _change_to(target)
 	if err != OK:
 		_stack.append(removed)
+		return err
+	_emit_stack_event(EventTopics.FLOW_SCENE_POPPED, target, {
+		"popped_scene": removed.scene_path
+	})
 	return err
 
 ## Peeks at the current stack entry.
@@ -151,5 +166,32 @@ func _deliver_payload(entry: FlowStackEntry) -> void:
 	if active_scene.has_method("receive_flow_payload"):
 		active_scene.call_deferred("receive_flow_payload", payload)
 
+func _emit_stack_event(topic: StringName, entry: FlowStackEntry, extra: Dictionary = {}) -> void:
+	if not analytics_enabled:
+		return
+	var payload := {
+		"scene_path": entry.scene_path,
+		"source_scene": entry.payload.source_scene if entry.payload else StringName(),
+		"stack_size": _stack.size(),
+		"timestamp_ms": Time.get_ticks_msec(),
+		"metadata": entry.payload.metadata.duplicate(true) if entry.payload and entry.payload.metadata else {}
+	}
+	for key in extra.keys():
+		payload[key] = extra[key]
+	_emit_analytics(topic, payload)
+
+func _emit_analytics(topic: StringName, payload: Dictionary) -> void:
+	if not analytics_enabled:
+		return
+	if Engine.has_singleton("EventBus"):
+		EventBus.pub(topic, payload)
+
 func _emit_scene_error(scene_path: String, error_code: int, message: String) -> void:
 	scene_error.emit(scene_path, error_code, message)
+	_emit_analytics(EventTopics.FLOW_SCENE_ERROR, {
+		"scene_path": scene_path,
+		"error_code": error_code,
+		"message": message,
+		"stack_size": _stack.size(),
+		"timestamp_ms": Time.get_ticks_msec()
+	})
