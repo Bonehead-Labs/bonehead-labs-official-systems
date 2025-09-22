@@ -73,7 +73,7 @@
 - [ ] Provide README outlining config tuning workflow and deterministic seeding considerations with `RNGService`.
 
 ### Milestone 2: Generic FSM Framework
-- [ ] Author shared FSM module (states, transitions, context) reusable by enemies.
+- [ ] Author shared FSM module (states, transitions, context) reusable by enemies (see Cross-Cutting Modules: FSM Toolkit).
 - [ ] Port player controller logic to FSM states (idle, move, jump, fall).
 - [ ] Document state lifecycle and hooks for ability modules.
 - [ ] Add minimal tooling to visualize current state via debug overlay integration point.
@@ -130,7 +130,7 @@
 ## Enemy AI (2D)
 
 ### Milestone 1: Enemy Base & FSM Integration
-- [ ] Develop enemy base class leveraging shared FSM with movement/combat hooks.
+- [ ] Develop enemy base class leveraging shared FSM with movement/combat hooks (consuming the FSM Toolkit from Cross-Cutting Modules).
 - [ ] Provide configuration resource for stats/behaviour parameters.
 - [ ] Document required nodes (CollisionShape2D, sensors) and setup.
 - [ ] Add signals for spawned, alerted, defeated and analytics emission toggles.
