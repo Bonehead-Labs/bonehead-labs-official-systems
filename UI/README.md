@@ -4,6 +4,7 @@
 
 - Default tokens: `res://UI/Theme/default_theme.tokens.tres`
 - Helper service: add `res://UI/Theme/ThemeService.gd` as an autoload named `ThemeService`.
+- Localization helper: add `res://UI/Theme/LocalizationHelper.gd` as `ThemeLocalization` to translate token strings with fallbacks.
 - Toggle high contrast at runtime using `ThemeService.enable_high_contrast(true)`.
 - Query colors, spacing, and font sizes from `ThemeService`.
 - Retrieve focus outlines via `ThemeService.get_focus_stylebox()` for consistent accessibility visuals.
@@ -19,3 +20,4 @@
 - Respect user preferences by toggling `ThemeService.enable_high_contrast`.
 - The focus stylebox automatically adapts when high contrast mode changes.
 - Consumers can check `ThemeService.is_high_contrast_enabled()` to adjust additional visuals.
+- Use `ThemeLocalization.translate(token, fallback)` to fetch UI copy while providing deterministic defaults when translations are missing.
