@@ -17,7 +17,8 @@ enum DamageType {
 
 @export var amount: float = 0.0
 @export var type: DamageType = DamageType.PHYSICAL
-@export var source: Node = null
+@export var source_path: NodePath  # Path to source node (for editor use)
+var source: Node = null  # Runtime reference to source node
 @export var source_name: String = ""
 @export var critical: bool = false
 @export var can_be_blocked: bool = true
@@ -31,8 +32,9 @@ func _init(p_amount: float = 0.0, p_type: DamageType = DamageType.PHYSICAL, p_so
 	amount = p_amount
 	type = p_type
 	source = p_source
-	if source:
-		source_name = source.name
+	if p_source:
+		source_path = p_source.get_path()
+		source_name = p_source.name
 
 ## Create a damage instance
 static func create_damage(p_amount: float, p_type: DamageType = DamageType.PHYSICAL, p_source: Node = null) -> DamageInfo:
@@ -41,6 +43,7 @@ static func create_damage(p_amount: float, p_type: DamageType = DamageType.PHYSI
 	damage.type = p_type
 	damage.source = p_source
 	if p_source:
+		damage.source_path = p_source.get_path()
 		damage.source_name = p_source.name
 	return damage
 
@@ -51,6 +54,7 @@ static func create_healing(p_amount: float, p_source: Node = null) -> DamageInfo
 	healing.type = DamageType.HEALING
 	healing.source = p_source
 	if p_source:
+		healing.source_path = p_source.get_path()
 		healing.source_name = p_source.name
 	return healing
 
@@ -97,7 +101,7 @@ func with_metadata(key: String, value: Variant) -> DamageInfo:
 
 ## Get a human-readable description
 func get_description() -> String:
-	var type_name := DamageType.keys()[type]
+	var type_name: String = DamageType.keys()[type]
 	var action := "healing" if is_healing() else "damage"
 	var amount_str := String.num(abs(amount), 1)
 	return "%s %s (%s)" % [amount_str, action, type_name]

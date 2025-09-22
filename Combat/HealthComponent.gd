@@ -14,9 +14,11 @@ signal healed(amount: float, source: Node, damage_info: DamageInfoScript)
 signal died(source: Node, damage_info: DamageInfoScript)
 signal invulnerability_changed(is_invulnerable: bool)
 
+var _max_health: float = 100.0
+
 @export var max_health: float = 100.0:
 	set(value):
-		var old_max := _max_health
+		var old_max: float = _max_health
 		_max_health = max(0.0, value)
 		_health = min(_health, _max_health)
 		if old_max != _max_health:
@@ -215,7 +217,8 @@ func load_data(data: Dictionary) -> bool:
 
 func get_save_id() -> String:
 	# Use parent node name for uniqueness
-	var parent_name := get_parent().name if get_parent() else "health_component"
+	var parent: Node = get_parent()
+	var parent_name: String = String(parent.name) if parent else "health_component"
 	return "health_" + parent_name
 
 func get_save_priority() -> int:
