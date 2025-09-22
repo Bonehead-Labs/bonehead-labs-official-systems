@@ -98,10 +98,10 @@
 ## Combat System
 
 ### Milestone 1: Health & Damage Core
-- [ ] Implement `HealthComponent` with typed signals and SaveService snapshot integration.
-- [ ] Define `DamageInfo` Resource capturing amount, type, source, metadata.
-- [ ] Add utility for applying damage with invulnerability windows and error checks.
-- [ ] Document core combat API, analytics hooks, and usage patterns.
+- [x] Implement `HealthComponent` with typed signals and SaveService snapshot integration.
+- [x] Define `DamageInfo` Resource capturing amount, type, source, metadata.
+- [x] Add utility for applying damage with invulnerability windows and error checks.
+- [x] Document core combat API, analytics hooks, and usage patterns.
 
 ### Milestone 2: Hitbox/Hurtbox Framework
 - [ ] Build components for hitboxes/hurtboxes leveraging Area2D/3D where relevant.

@@ -24,6 +24,8 @@ const JumpStateScript = preload("res://PlayerController/states/PlayerStateJump.g
 const FallStateScript = preload("res://PlayerController/states/PlayerStateFall.gd")
 const InteractionDetectorScript = preload("res://PlayerController/InteractionDetector.gd")
 const AbilityScript = preload("res://PlayerController/Ability.gd")
+const HealthComponentScript = preload("res://Combat/HealthComponent.gd")
+const DamageInfoScript = preload("res://Combat/DamageInfo.gd")
 
 const STATE_IDLE := StringName("idle")
 const STATE_MOVE := StringName("move")
@@ -46,21 +48,15 @@ var _input_service_connected: bool = false
 var _axis_values: Dictionary[StringName, float] = {}
 var _interaction_detector: InteractionDetectorScript = null
 var _abilities: Dictionary[StringName, Node] = {}
-
-# Combat/Health state
-var _health: float = 100.0
-var _max_health: float = 100.0
-var _is_invulnerable: bool = false
-var _invulnerability_timer: float = 0.0
-var _last_damage_source: Node = null
+var _health_component: HealthComponentScript = null
 
 func _ready() -> void:
     if movement_config == null:
         movement_config = MovementConfigScript.new()
     _resolve_state_machine()
+    _setup_health_component()
     _setup_interaction_detector()
     _connect_input_service()
-    _register_with_save_service()
     _was_on_floor = is_on_floor()
 
 func _process(delta: float) -> void:
@@ -193,6 +189,19 @@ func get_motion_velocity() -> Vector2:
 func _exit_tree() -> void:
     _disconnect_input_service()
 
+func _setup_health_component() -> void:
+    _health_component = HealthComponentScript.new()
+    _health_component.max_health = 100.0  # Could be configurable
+    _health_component.invulnerability_duration = 0.5
+    _health_component.auto_register_with_save_service = false  # We'll handle save registration
+    add_child(_health_component)
+
+    # Connect health component signals to forward them
+    _health_component.damaged.connect(_on_health_component_damaged)
+    _health_component.healed.connect(_on_health_component_healed)
+    _health_component.died.connect(_on_health_component_died)
+    _health_component.health_changed.connect(_on_health_component_health_changed)
+
 func _setup_interaction_detector() -> void:
     if not enable_interaction_detector or Engine.is_editor_hint():
         return
@@ -214,6 +223,20 @@ func interact() -> void:
 
 func _on_interaction_available_changed(available: bool) -> void:
     interaction_available_changed.emit(available)
+
+# Health Component Signal Forwarding
+func _on_health_component_damaged(amount: float, source: Node, damage_info: DamageInfoScript) -> void:
+    player_damaged.emit(amount, source, _health_component.get_health())
+
+func _on_health_component_healed(amount: float, source: Node, damage_info: DamageInfoScript) -> void:
+    player_healed.emit(amount, source, _health_component.get_health())
+
+func _on_health_component_died(source: Node, damage_info: DamageInfoScript) -> void:
+    player_died.emit(source)
+
+func _on_health_component_health_changed(old_health: float, new_health: float) -> void:
+    # Could emit additional signals if needed
+    pass
 
 func register_ability(ability_id: StringName, ability: Node) -> void:
     if _abilities.has(ability_id):
@@ -247,136 +270,96 @@ func deactivate_ability(ability_id: StringName) -> void:
     if ability:
         ability.deactivate()
 
-# Combat/Damage System
+# Combat/Damage System - Delegates to HealthComponent
 func take_damage(amount: float, source: Node = null, damage_type: String = "physical") -> void:
-    """Apply damage to the player. Forwards to Combat system via signals."""
-    if _is_invulnerable or amount <= 0.0:
+    """Apply damage to the player using DamageInfo."""
+    if not _health_component:
+        push_error("HealthComponent not available")
         return
 
-    var actual_damage := amount
-    var old_health := _health
-
-    # Apply damage
-    _health = max(0.0, _health - actual_damage)
-    _last_damage_source = source
-
-    # Emit signals
-    player_damaged.emit(actual_damage, source, _health)
-
-    # EventBus analytics
-    _emit_player_event(EventTopics.PLAYER_DAMAGED, {
-        StringName("amount"): actual_damage,
-        StringName("hp_after"): _health,
-        StringName("source_type"): source.get_class() if source else "unknown",
-        StringName("damage_type"): damage_type,
-        StringName("player_position"): global_position
-    })
-
-    # Check for death
-    if _health <= 0.0 and old_health > 0.0:
-        die(source)
+    var damage_info := DamageInfoScript.create_damage(amount, _get_damage_type_enum(damage_type), source)
+    _health_component.take_damage(damage_info)
 
 func heal(amount: float, source: Node = null) -> void:
-    """Heal the player. Amount is clamped to not exceed max health."""
-    if amount <= 0.0:
+    """Heal the player using DamageInfo."""
+    if not _health_component:
+        push_error("HealthComponent not available")
         return
 
-    var actual_heal: float = min(amount, _max_health - _health)
-    if actual_heal <= 0.0:
-        return
-
-    var _old_health := _health
-    _health = min(_max_health, _health + actual_heal)
-
-    # Emit signals
-    player_healed.emit(actual_heal, source, _health)
-
-    # EventBus analytics
-    _emit_player_event(EventTopics.PLAYER_HEALED, {
-        StringName("amount"): actual_heal,
-        StringName("hp_after"): _health,
-        StringName("source_type"): source.get_class() if source else "unknown",
-        StringName("player_position"): global_position
-    })
+    var healing_info := DamageInfoScript.create_healing(amount, source)
+    _health_component.heal(healing_info)
 
 func die(source: Node = null) -> void:
-    """Handle player death."""
-    _last_damage_source = source
-
-    # Emit signals
-    player_died.emit(source)
-
-    # EventBus analytics
-    _emit_player_event(EventTopics.PLAYER_DIED, {
-        StringName("source_type"): source.get_class() if source else "unknown",
-        StringName("final_position"): global_position
-    })
-
-    # TODO: Transition to death state, respawn logic, etc.
+    """Kill the player immediately."""
+    if _health_component:
+        _health_component.kill(source)
 
 func set_max_health(new_max: float) -> void:
     """Set the maximum health value."""
-    _max_health = max(0.0, new_max)
-    _health = min(_health, _max_health)
+    if _health_component:
+        _health_component.max_health = new_max
 
 func get_health() -> float:
     """Get current health value."""
-    return _health
+    return _health_component.get_health() if _health_component else 0.0
 
 func get_max_health() -> float:
     """Get maximum health value."""
-    return _max_health
+    return _health_component.get_max_health() if _health_component else 0.0
 
 func get_health_percentage() -> float:
     """Get health as a percentage (0.0 to 1.0)."""
-    return _health / _max_health if _max_health > 0.0 else 0.0
+    return _health_component.get_health_percentage() if _health_component else 0.0
 
 func is_alive() -> bool:
     """Check if the player is alive."""
-    return _health > 0.0
+    return _health_component.is_alive() if _health_component else false
 
 func is_full_health() -> bool:
     """Check if the player has full health."""
-    return _health >= _max_health
+    return _health_component.is_full_health() if _health_component else false
 
 func set_invulnerable(duration: float) -> void:
     """Make the player invulnerable for a specified duration."""
-    _is_invulnerable = true
-    _invulnerability_timer = duration
-
-    if duration > 0.0:
-        # Schedule end of invulnerability
-        call_deferred("_schedule_invulnerability_end", duration)
-
-func _schedule_invulnerability_end(duration: float) -> void:
-    """Helper to end invulnerability after a delay."""
-    await get_tree().create_timer(duration).timeout
-    if _invulnerability_timer <= 0.0:  # Check if it wasn't reset
-        _is_invulnerable = false
-        _invulnerability_timer = 0.0
+    if _health_component:
+        _health_component.set_invulnerable(true, duration)
 
 func is_invulnerable() -> bool:
     """Check if the player is currently invulnerable."""
-    return _is_invulnerable
+    return _health_component.is_invulnerable() if _health_component else false
+
+func _get_damage_type_enum(damage_type: String) -> int:
+    """Convert string damage type to enum value."""
+    match damage_type.to_lower():
+        "physical": return DamageInfoScript.DamageType.PHYSICAL
+        "magical", "magic": return DamageInfoScript.DamageType.MAGICAL
+        "fire": return DamageInfoScript.DamageType.FIRE
+        "ice": return DamageInfoScript.DamageType.ICE
+        "lightning": return DamageInfoScript.DamageType.LIGHTNING
+        "poison": return DamageInfoScript.DamageType.POISON
+        "true": return DamageInfoScript.DamageType.TRUE
+        "healing": return DamageInfoScript.DamageType.HEALING
+        _: return DamageInfoScript.DamageType.PHYSICAL
 
 # Save/Load System - ISaveable Implementation
 func save_data() -> Dictionary:
     """Save player state for persistence."""
+    var health_data := {}
+    if _health_component:
+        health_data = _health_component.save_data()
+
     return {
         "position": {
             "x": global_position.x,
             "y": global_position.y
         },
-        "health": _health,
-        "max_health": _max_health,
         "velocity": {
             "x": _velocity.x,
             "y": _velocity.y
         },
-        "is_invulnerable": _is_invulnerable,
-        "invulnerability_timer": _invulnerability_timer,
         "current_state": _state_machine.get_current_state() if _state_machine else StringName(),
-        "abilities": _get_active_abilities_data()
+        "abilities": _get_active_abilities_data(),
+        "health_data": health_data  # Delegate health saving to HealthComponent
     }
 
 func load_data(data: Dictionary) -> bool:
@@ -391,10 +374,6 @@ func load_data(data: Dictionary) -> bool:
         pos_data.get("y", 0.0)
     )
 
-    # Load health
-    _health = data.get("health", _max_health)
-    _max_health = data.get("max_health", 100.0)
-
     # Load velocity
     if data.has("velocity"):
         var vel_data = data.velocity
@@ -402,10 +381,6 @@ func load_data(data: Dictionary) -> bool:
             vel_data.get("x", 0.0),
             vel_data.get("y", 0.0)
         )
-
-    # Load invulnerability state
-    _is_invulnerable = data.get("is_invulnerable", false)
-    _invulnerability_timer = data.get("invulnerability_timer", 0.0)
 
     # Load state machine state
     var saved_state = data.get("current_state", "")
@@ -415,6 +390,11 @@ func load_data(data: Dictionary) -> bool:
     # Load abilities
     var abilities_data = data.get("abilities", {})
     _load_abilities_data(abilities_data)
+
+    # Load health data (delegate to HealthComponent)
+    var health_data = data.get("health_data", {})
+    if _health_component and not health_data.is_empty():
+        _health_component.load_data(health_data)
 
     return true
 
