@@ -110,6 +110,75 @@ This document defines the rules and expectations for AI agents and automated too
 
 ---
 
+## Type Safety & Naming Conflicts
+
+### Variant Inference Prevention
+- ❌ **Never** rely on automatic Variant type inference
+- ✅ **Always** explicitly type variables, especially when:
+  - Values come from `Dictionary.get()`, `metadata.get()`, or similar Variant-returning methods
+  - Values are assigned from function calls that return `Variant`
+  - Variables are initialized from empty collections `{}`, `[]`
+- ✅ Use explicit type annotations: `var transition_name: String = metadata.get("transition", "")`
+
+### Global Identifier Conflicts
+- ❌ **Never** name constants the same as existing global classes
+- ✅ **Always** append "Script" suffix to preload constants that reference global classes:
+  ```gdscript
+  # ❌ BAD - shadows FlowAsyncLoader global class
+  const FlowAsyncLoader = preload("res://SceneFlow/AsyncSceneLoader.gd")
+
+  # ✅ GOOD - avoids global shadowing
+  const AsyncSceneLoaderScript = preload("res://SceneFlow/AsyncSceneLoader.gd")
+  ```
+
+### Parameter Shadowing Prevention
+- ❌ **Never** use constructor parameters with same names as member variables
+- ✅ **Always** prefix constructor parameters with underscores:
+  ```gdscript
+  # ❌ BAD - shadows member variable
+  func _init(scene_path: String, metadata: Dictionary = {}) -> void:
+      self.scene_path = scene_path  # shadows self.scene_path
+
+  # ✅ GOOD - avoids shadowing
+  func _init(_scene_path: String, _metadata: Dictionary = {}) -> void:
+      self.scene_path = _scene_path
+  ```
+
+### Godot 4 API Compatibility
+- ❌ **Never** assume Godot 4 has all Godot 3 APIs
+- ✅ **Always** verify API existence before use:
+  - `ResourceLoader.load_threaded_cancel()` ❌ DOES NOT EXIST in Godot 4
+  - Implement custom cancellation logic instead
+- ✅ Check official Godot 4 documentation for API changes
+
+### GDScript Syntax vs Python
+- ❌ **Never** use Python-like syntax in GDScript
+- ✅ **Always** use proper GDScript syntax:
+  ```gdscript
+  # ❌ BAD - Python syntax
+  for i in range(size)[::-1]:
+
+  # ✅ GOOD - GDScript syntax
+  for i in range(size - 1, -1, -1):
+  ```
+
+### Collection Type Limitations
+- ❌ **Never** use nested typed collections
+- ✅ **Always** use simple Dictionary/Array types for complex data:
+  ```gdscript
+  # ❌ BAD - not supported
+  var glyphs: Dictionary[StringName, Dictionary[StringName, Texture2D]] = {}
+
+  # ✅ GOOD - use untyped Dictionary
+  var glyphs: Dictionary = {}
+  ```
+
+### GUT Test Method Names
+- ❌ **Never** use non-existent test assertion methods
+- ✅ **Always** use correct GUT assertion methods:
+  - `assert_ne()` ✅ (not equal)
+  - `assert_neq()` ❌ DOES NOT EXIST
+
 ## General Style
 
 - **Consistency** across modules
