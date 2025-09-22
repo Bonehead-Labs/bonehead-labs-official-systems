@@ -257,10 +257,10 @@
 - [ ] Supply sample scenes demonstrating usage.
 
 ### Milestone 3: FSM Toolkit (Player + Enemy)
-- [ ] Extract FSM framework into standalone module under `systems/fsm`.
-- [ ] Provide base state classes with lifecycle docstrings and typed context.
-- [ ] Write integration guide for consuming systems (Player, Enemy, Debug tools).
-- [ ] Produce example states/tests verifying core transitions.
+- [x] Extract FSM framework into standalone module under `systems/fsm`.
+- [x] Provide base state classes with lifecycle docstrings and typed context.
+- [x] Write integration guide for consuming systems (Player, Enemy, Debug tools).
+- [x] Produce example states/tests verifying core transitions.
 
 ### Milestone 4: SaveService Integration Guidelines
 - [ ] Create documentation/resources describing save snapshot contracts for all systems.
