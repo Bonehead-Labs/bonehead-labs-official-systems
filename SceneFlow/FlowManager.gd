@@ -1,11 +1,11 @@
 class_name _FlowManager
 extends Node
 
-const FlowAsyncLoader = preload("res://SceneFlow/AsyncSceneLoader.gd")
-const FlowLoadingScreen = preload("res://SceneFlow/LoadingScreenContract.gd")
-const FlowTransitionLibrary = preload("res://SceneFlow/Transitions/TransitionLibrary.gd")
-const FlowTransitionPlayer = preload("res://SceneFlow/Transitions/TransitionPlayer.gd")
-const FlowTransition = preload("res://SceneFlow/Transitions/TransitionResource.gd")
+const AsyncSceneLoaderScript = preload("res://SceneFlow/AsyncSceneLoader.gd")
+const LoadingScreenContractScript = preload("res://SceneFlow/LoadingScreenContract.gd")
+const TransitionLibraryScript = preload("res://SceneFlow/Transitions/TransitionLibrary.gd")
+const TransitionPlayerScript = preload("res://SceneFlow/Transitions/TransitionPlayer.gd")
+const TransitionResourceScript = preload("res://SceneFlow/Transitions/TransitionResource.gd")
 
 ## FlowManager is an autoload singleton responsible for high-level scene navigation.
 ## It provides a stack-based API for pushing, popping, and replacing scenes.
@@ -22,13 +22,13 @@ signal scene_changed(scene_path: String, entry: FlowStackEntry)
 ## Emitted when a scene transition fails along with the error code and message.
 signal scene_error(scene_path: String, error_code: int, message: String)
 ## Emitted when an asynchronous load starts.
-signal loading_started(scene_path: String, handle: FlowAsyncLoader.LoadHandle)
+signal loading_started(scene_path: String, handle: AsyncSceneLoaderScript.LoadHandle)
 ## Emitted periodically with loading progress (0.0 - 1.0).
 signal loading_progress(scene_path: String, progress: float, metadata: Dictionary)
 ## Emitted after an asynchronous load completes successfully.
-signal loading_finished(scene_path: String, handle: FlowAsyncLoader.LoadHandle)
+signal loading_finished(scene_path: String, handle: AsyncSceneLoaderScript.LoadHandle)
 ## Emitted when an asynchronous load is cancelled.
-signal loading_cancelled(scene_path: String, handle: FlowAsyncLoader.LoadHandle)
+signal loading_cancelled(scene_path: String, handle: AsyncSceneLoaderScript.LoadHandle)
 ## Emitted when transition playback finishes.
 signal transition_complete(scene_path: String, metadata: Dictionary)
 
@@ -58,11 +58,11 @@ class FlowStackEntry extends RefCounted:
 var _stack: Array[FlowStackEntry] = []
 ## When true, FlowManager will publish analytics events to EventBus.
 var analytics_enabled: bool = false
-var _async_loader: FlowAsyncLoader = FlowAsyncLoader.new()
+var _async_loader: AsyncSceneLoaderScript = AsyncSceneLoaderScript.new()
 var _loading_screen_scene: PackedScene = null
 var _loading_screen_parent_path: NodePath = NodePath()
-var _loading_screen_instance: FlowLoadingScreen = null
-var _transition_library: FlowTransitionLibrary = null
+var _loading_screen_instance: LoadingScreenContractScript = null
+var _transition_library: TransitionLibraryScript = null
 var _transition_player_scene: PackedScene = null
 var _transition_player: Node = null
 var _transition_metadata: Dictionary = {}
@@ -75,35 +75,35 @@ var _save_transition_slot: String = "flow_autosave"
 var _save_settings_key: StringName = StringName()
 var _save_service_node: Object = null
 var _settings_service_node: Object = null
-var _pending_load: FlowAsyncLoader.LoadHandle = null
+var _pending_load: AsyncSceneLoaderScript.LoadHandle = null
 var _pending_entry: FlowStackEntry = null
 var _pending_operation: StringName = StringName()
 var _pending_previous_entry: FlowStackEntry = null
 var _pending_metadata: Dictionary = {}
 
 func _ready() -> void:
-    if _stack.is_empty():
-        var current_scene := get_tree().current_scene
-        if current_scene:
-            var entry := FlowStackEntry.new(current_scene.scene_file_path, FlowPayload.new(null, {}, current_scene.scene_file_path))
-            _stack.append(entry)
-    _ensure_transition_player()
-    set_process(true)
+	if _stack.is_empty():
+		var current_scene := get_tree().current_scene
+		if current_scene:
+			var entry := FlowStackEntry.new(current_scene.scene_file_path, FlowPayload.new(null, {}, current_scene.scene_file_path))
+			_stack.append(entry)
+	_ensure_transition_player()
+	set_process(true)
 
 func _process(_delta: float) -> void:
 	if not has_pending_load():
 		return
 	_async_loader.poll(_pending_load)
-	if _pending_load.status == FlowAsyncLoader.LoadStatus.LOADING:
+	if _pending_load.status == AsyncSceneLoaderScript.LoadStatus.LOADING:
 		loading_progress.emit(_pending_load.scene_path, _pending_load.progress, _pending_metadata)
 		_update_loading_screen(_pending_load.progress, _pending_metadata)
 		_emit_loading_event(EventTopics.FLOW_LOADING_PROGRESS)
 		return
-	if _pending_load.status == FlowAsyncLoader.LoadStatus.LOADED:
+	if _pending_load.status == AsyncSceneLoaderScript.LoadStatus.LOADED:
 		_finalize_pending_load(true)
-	elif _pending_load.status == FlowAsyncLoader.LoadStatus.FAILED:
+	elif _pending_load.status == AsyncSceneLoaderScript.LoadStatus.FAILED:
 		_finalize_pending_load(false)
-	elif _pending_load.status == FlowAsyncLoader.LoadStatus.CANCELLED:
+	elif _pending_load.status == AsyncSceneLoaderScript.LoadStatus.CANCELLED:
 		_handle_load_cancelled()
 
 ## Pushes a scene onto the stack and transitions to it.
@@ -226,15 +226,15 @@ func _change_to(entry: FlowStackEntry) -> Error:
 	return err
 
 func _activate_entry(entry: FlowStackEntry, packed: PackedScene) -> Error:
-    about_to_change.emit(entry.scene_path, entry)
-    _play_transition(false, entry)
-    var err := _perform_scene_change(packed)
-    if err != OK:
-        return err
-    _deliver_payload(entry)
-    _play_transition(true, entry)
-    scene_changed.emit(entry.scene_path, entry)
-    return OK
+	about_to_change.emit(entry.scene_path, entry)
+	_play_transition(false, entry)
+	var err := _perform_scene_change(packed)
+	if err != OK:
+		return err
+	_deliver_payload(entry)
+	_play_transition(true, entry)
+	scene_changed.emit(entry.scene_path, entry)
+	return OK
 
 func _deliver_payload(entry: FlowStackEntry) -> void:
 	var payload := entry.payload
@@ -314,208 +314,208 @@ func _reset_pending_state() -> void:
 	_pending_operation = StringName()
 	_pending_metadata = {}
 
-func _ensure_loading_screen(handle: FlowAsyncLoader.LoadHandle) -> void:
-    if _loading_screen_scene == null:
-        return
-    if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
-        _loading_screen_instance.begin_loading(handle)
-        return
-    var parent := _resolve_loading_screen_parent()
-    if parent == null:
-        return
-    var instance := _loading_screen_scene.instantiate()
-    if not (instance is FlowLoadingScreen):
-        push_warning("FlowManager expected FlowLoadingScreen but received %s" % [instance])
-        instance.queue_free()
-        return
-    _loading_screen_instance = instance
-    parent.add_child(instance)
-    _loading_screen_instance.begin_loading(handle)
+func _ensure_loading_screen(handle: AsyncSceneLoaderScript.LoadHandle) -> void:
+	if _loading_screen_scene == null:
+		return
+	if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
+		_loading_screen_instance.begin_loading(handle)
+		return
+	var parent := _resolve_loading_screen_parent()
+	if parent == null:
+		return
+	var instance := _loading_screen_scene.instantiate()
+	if not (instance is FlowLoadingScreen):
+		push_warning("FlowManager expected FlowLoadingScreen but received %s" % [instance])
+		instance.queue_free()
+		return
+	_loading_screen_instance = instance
+	parent.add_child(instance)
+	_loading_screen_instance.begin_loading(handle)
 
 func _update_loading_screen(progress: float, metadata: Dictionary) -> void:
 	if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
 		_loading_screen_instance.update_progress(progress, metadata)
 
 func _hide_loading_screen(success: bool, metadata: Dictionary) -> void:
-    if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
-        _loading_screen_instance.finish_loading(success, metadata)
-        if success:
-            _loading_screen_instance.queue_free()
-            _loading_screen_instance = null
-    if success:
-        _play_transition(true, _pending_entry)
+	if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
+		_loading_screen_instance.finish_loading(success, metadata)
+		if success:
+			_loading_screen_instance.queue_free()
+			_loading_screen_instance = null
+	if success:
+		_play_transition(true, _pending_entry)
 
 func _resolve_loading_screen_parent() -> Node:
-    if _loading_screen_parent_path.is_empty():
-        var scene := get_tree().current_scene
-        return scene if scene else get_tree().root
-    var node := get_node_or_null(_loading_screen_parent_path)
-    return node if node else get_tree().root
+	if _loading_screen_parent_path.is_empty():
+		var scene := get_tree().current_scene
+		return scene if scene else get_tree().root
+	var node := get_node_or_null(_loading_screen_parent_path)
+	return node if node else get_tree().root
 
 func _emit_loading_event(topic: StringName, extra: Dictionary = {}) -> void:
-    if not analytics_enabled:
-        return
-    var payload := _build_loading_payload(extra)
-    _emit_analytics(topic, payload)
+	if not analytics_enabled:
+		return
+	var payload := _build_loading_payload(extra)
+	_emit_analytics(topic, payload)
 
 func _build_loading_payload(extra: Dictionary) -> Dictionary:
-    var handle := _pending_load
-    var payload := {
-        "scene_path": StringName(handle.scene_path) if handle else StringName(),
-        "operation": String(_pending_operation),
-        "progress": handle.progress if handle else 0.0,
-        "metadata": _pending_metadata.duplicate(true),
-        "seed": handle.seed_snapshot if handle else 0,
-        "timestamp_ms": Time.get_ticks_msec(),
-        "stack_size": _stack.size()
-    }
-    for key in extra.keys():
-        payload[key] = extra[key]
-    return payload
+	var handle := _pending_load
+	var payload := {
+		"scene_path": StringName(handle.scene_path) if handle else StringName(),
+		"operation": String(_pending_operation),
+		"progress": handle.progress if handle else 0.0,
+		"metadata": _pending_metadata.duplicate(true),
+		"seed": handle.seed_snapshot if handle else 0,
+		"timestamp_ms": Time.get_ticks_msec(),
+		"stack_size": _stack.size()
+	}
+	for key in extra.keys():
+		payload[key] = extra[key]
+	return payload
 
 func _resolve_checkpoint_manager() -> Object:
-    if Engine.is_editor_hint():
-        return null
-    if _checkpoint_manager_node:
-        if _checkpoint_manager_node is Node and not is_instance_valid(_checkpoint_manager_node):
-            _checkpoint_manager_node = null
-        else:
-            return _checkpoint_manager_node
-    if not _checkpoint_manager_path.is_empty():
-        var node := get_node_or_null(_checkpoint_manager_path)
-        if node:
-            _checkpoint_manager_node = node
-            return _checkpoint_manager_node
-    if not _checkpoint_manager_autoload.is_empty():
-        var name := String(_checkpoint_manager_autoload)
-        if Engine.has_singleton(name):
-            _checkpoint_manager_node = Engine.get_singleton(name)
-            return _checkpoint_manager_node
-    return null
+	if Engine.is_editor_hint():
+		return null
+	if _checkpoint_manager_node:
+		if _checkpoint_manager_node is Node and not is_instance_valid(_checkpoint_manager_node):
+			_checkpoint_manager_node = null
+		else:
+			return _checkpoint_manager_node
+	if not _checkpoint_manager_path.is_empty():
+		var node := get_node_or_null(_checkpoint_manager_path)
+		if node:
+			_checkpoint_manager_node = node
+			return _checkpoint_manager_node
+	if not _checkpoint_manager_autoload.is_empty():
+		var singleton_name := String(_checkpoint_manager_autoload)
+		if Engine.has_singleton(singleton_name):
+			_checkpoint_manager_node = Engine.get_singleton(singleton_name)
+			return _checkpoint_manager_node
+	return null
 
 func _resolve_save_service() -> Object:
-    if Engine.is_editor_hint():
-        return null
-    if _save_service_node:
-        if _save_service_node is Node and not is_instance_valid(_save_service_node):
-            _save_service_node = null
-        else:
-            return _save_service_node
-    if Engine.has_singleton("SaveService"):
-        _save_service_node = Engine.get_singleton("SaveService")
-        return _save_service_node
-    return null
+	if Engine.is_editor_hint():
+		return null
+	if _save_service_node:
+		if _save_service_node is Node and not is_instance_valid(_save_service_node):
+			_save_service_node = null
+		else:
+			return _save_service_node
+	if Engine.has_singleton("SaveService"):
+		_save_service_node = Engine.get_singleton("SaveService")
+		return _save_service_node
+	return null
 
 func _resolve_settings_service() -> Object:
-    if Engine.is_editor_hint():
-        return null
-    if _settings_service_node:
-        if _settings_service_node is Node and not is_instance_valid(_settings_service_node):
-            _settings_service_node = null
-        else:
-            return _settings_service_node
-    if Engine.has_singleton("SettingsService"):
-        _settings_service_node = Engine.get_singleton("SettingsService")
-        return _settings_service_node
-    return null
+	if Engine.is_editor_hint():
+		return null
+	if _settings_service_node:
+		if _settings_service_node is Node and not is_instance_valid(_settings_service_node):
+			_settings_service_node = null
+		else:
+			return _settings_service_node
+	if Engine.has_singleton("SettingsService"):
+		_settings_service_node = Engine.get_singleton("SettingsService")
+		return _settings_service_node
+	return null
 
 func _settings_allows_save() -> bool:
-    if _save_settings_key == StringName():
-        return true
-    var settings_service := _resolve_settings_service()
-    if settings_service == null:
-        return true
-    if settings_service.has_method("get_bool"):
-        return settings_service.get_bool(_save_settings_key, true)
-    if settings_service.has_method("get_value"):
-        return bool(settings_service.get_value(_save_settings_key, true))
-    return true
+	if _save_settings_key == StringName():
+		return true
+	var settings_service := _resolve_settings_service()
+	if settings_service == null:
+		return true
+	if settings_service.has_method("get_bool"):
+		return settings_service.get_bool(_save_settings_key, true)
+	if settings_service.has_method("get_value"):
+		return bool(settings_service.get_value(_save_settings_key, true))
+	return true
 
-func _maybe_save_before_transition(prev_entry: FlowStackEntry, operation: StringName) -> void:
-    if not _save_on_transition_enabled:
-        return
-    if Engine.is_editor_hint():
-        return
-    if prev_entry == null:
-        return
-    if not _settings_allows_save():
-        return
-    var save_service := _resolve_save_service()
-    if save_service == null or not save_service.has_method("save_game"):
-        return
-    save_service.save_game(_save_transition_slot)
-    # Intentionally no analytics emission here; SaveService handles its own telemetry.
+func _maybe_save_before_transition(prev_entry: FlowStackEntry, _operation: StringName) -> void:
+	if not _save_on_transition_enabled:
+		return
+	if Engine.is_editor_hint():
+		return
+	if prev_entry == null:
+		return
+	if not _settings_allows_save():
+		return
+	var save_service := _resolve_save_service()
+	if save_service == null or not save_service.has_method("save_game"):
+		return
+	save_service.save_game(_save_transition_slot)
+	# Intentionally no analytics emission here; SaveService handles its own telemetry.
 
 func _notify_checkpoint_manager(operation: StringName, previous_entry: FlowStackEntry, active_entry: FlowStackEntry) -> void:
-    if Engine.is_editor_hint():
-        return
-    var manager := _resolve_checkpoint_manager()
-    if manager == null or not manager.has_method(_checkpoint_manager_method):
-        return
-    var payload := {
-        "operation": String(operation),
-        "scene_path": active_entry.scene_path if active_entry else "",
-        "previous_scene": previous_entry.scene_path if previous_entry else "",
-        "metadata": active_entry.payload.metadata.duplicate(true) if active_entry and active_entry.payload else {},
-        "previous_metadata": previous_entry.payload.metadata.duplicate(true) if previous_entry and previous_entry.payload else {},
-        "timestamp_ms": Time.get_ticks_msec()
-    }
-    manager.call(_checkpoint_manager_method, payload)
+	if Engine.is_editor_hint():
+		return
+	var manager := _resolve_checkpoint_manager()
+	if manager == null or not manager.has_method(_checkpoint_manager_method):
+		return
+	var payload := {
+		"operation": String(operation),
+		"scene_path": active_entry.scene_path if active_entry else "",
+		"previous_scene": previous_entry.scene_path if previous_entry else "",
+		"metadata": active_entry.payload.metadata.duplicate(true) if active_entry and active_entry.payload else {},
+		"previous_metadata": previous_entry.payload.metadata.duplicate(true) if previous_entry and previous_entry.payload else {},
+		"timestamp_ms": Time.get_ticks_msec()
+	}
+	manager.call(_checkpoint_manager_method, payload)
 
 func _ensure_transition_player() -> void:
-    if _transition_player and is_instance_valid(_transition_player):
-        return
-    if _transition_player_scene == null:
-        return
-    var parent := _resolve_loading_screen_parent()
-    if parent == null:
-        parent = get_tree().root
-    var instance := _transition_player_scene.instantiate()
-    _transition_player = instance
-    parent.add_child(instance)
-    if _transition_player.has_signal("transition_finished"):
-        _transition_player.transition_finished.connect(_on_transition_finished)
+	if _transition_player and is_instance_valid(_transition_player):
+		return
+	if _transition_player_scene == null:
+		return
+	var parent := _resolve_loading_screen_parent()
+	if parent == null:
+		parent = get_tree().root
+	var instance := _transition_player_scene.instantiate()
+	_transition_player = instance
+	parent.add_child(instance)
+	if _transition_player.has_signal("transition_finished"):
+		_transition_player.transition_finished.connect(_on_transition_finished)
 
 func _play_transition(is_enter: bool, entry: FlowStackEntry) -> void:
-    if _transition_library == null:
-        return
-    var transition_name := entry.payload.metadata.get("transition", "") if entry and entry.payload else ""
-    var transition := _transition_library.get_transition(StringName(transition_name))
-    if transition == null:
-        return
-    _ensure_transition_player()
-    if not (_transition_player and _transition_player.has_method("play_transition")):
-        return
-    _transition_metadata = {
-        "transition_name": transition.name,
-        "enter": is_enter,
-        "scene_path": entry.scene_path,
-        "payload_metadata": entry.payload.metadata.duplicate(true) if entry and entry.payload else {}
-    }
-    _transition_player.play_transition(transition, is_enter)
+	if _transition_library == null:
+		return
+	var transition_name: String = entry.payload.metadata.get("transition", "") if entry and entry.payload else ""
+	var transition := _transition_library.get_transition(StringName(transition_name))
+	if transition == null:
+		return
+	_ensure_transition_player()
+	if not (_transition_player and _transition_player.has_method("play_transition")):
+		return
+	_transition_metadata = {
+		"transition_name": transition.name,
+		"enter": is_enter,
+		"scene_path": entry.scene_path,
+		"payload_metadata": entry.payload.metadata.duplicate(true) if entry and entry.payload else {}
+	}
+	_transition_player.play_transition(transition, is_enter)
 
 func _emit_stack_event(topic: StringName, entry: FlowStackEntry, extra: Dictionary = {}) -> void:
-    if not analytics_enabled:
-        return
-    var payload := {
-        "scene_path": entry.scene_path,
-        "source_scene": entry.payload.source_scene if entry.payload else StringName(),
-        "stack_size": _stack.size(),
-        "timestamp_ms": Time.get_ticks_msec(),
-        "metadata": entry.payload.metadata.duplicate(true) if entry.payload and entry.payload.metadata else {}
-    }
-    for key in extra.keys():
-        payload[key] = extra[key]
-    _emit_analytics(topic, payload)
+	if not analytics_enabled:
+		return
+	var payload := {
+		"scene_path": entry.scene_path,
+		"source_scene": entry.payload.source_scene if entry.payload else StringName(),
+		"stack_size": _stack.size(),
+		"timestamp_ms": Time.get_ticks_msec(),
+		"metadata": entry.payload.metadata.duplicate(true) if entry.payload and entry.payload.metadata else {}
+	}
+	for key in extra.keys():
+		payload[key] = extra[key]
+	_emit_analytics(topic, payload)
 
 func _on_transition_finished(transition: FlowTransition, direction: String) -> void:
-    var metadata := _transition_metadata.duplicate(true)
-    metadata["direction"] = direction
-    metadata["transition_name"] = transition.name
-    transition_complete.emit(StringName(metadata.get("scene_path", "")), metadata)
-    if analytics_enabled:
-        _emit_analytics(EventTopics.FLOW_TRANSITION_COMPLETED, metadata)
-    _transition_metadata = {}
+	var metadata := _transition_metadata.duplicate(true)
+	metadata["direction"] = direction
+	metadata["transition_name"] = transition.name
+	transition_complete.emit(StringName(metadata.get("scene_path", "")), metadata)
+	if analytics_enabled:
+		_emit_analytics(EventTopics.FLOW_TRANSITION_COMPLETED, metadata)
+	_transition_metadata = {}
 
 func _perform_scene_change(packed: PackedScene) -> Error:
 	return get_tree().change_scene_to_packed(packed)
@@ -552,14 +552,14 @@ func clear_loading_screen() -> void:
 	_loading_screen_parent_path = NodePath()
 
 func configure_transition_library(library: FlowTransitionLibrary, player_scene: PackedScene = null) -> void:
-    _transition_library = library
-    _transition_player_scene = player_scene
-    if _transition_player:
-        if _transition_player.has_signal("transition_finished") and _transition_player.transition_finished.is_connected(_on_transition_finished):
-            _transition_player.transition_finished.disconnect(_on_transition_finished)
-        if is_instance_valid(_transition_player):
-            _transition_player.queue_free()
-        _transition_player = null
+	_transition_library = library
+	_transition_player_scene = player_scene
+	if _transition_player:
+		if _transition_player.has_signal("transition_finished") and _transition_player.transition_finished.is_connected(_on_transition_finished):
+			_transition_player.transition_finished.disconnect(_on_transition_finished)
+		if is_instance_valid(_transition_player):
+			_transition_player.queue_free()
+		_transition_player = null
 
 func clear_transition_library() -> void:
 	_transition_library = null
@@ -599,7 +599,7 @@ func clear_save_on_transition() -> void:
 	_save_settings_key = StringName()
 
 func has_pending_load() -> bool:
-	return _pending_load != null and _pending_load.status == FlowAsyncLoader.LoadStatus.LOADING
+	return _pending_load != null and _pending_load.status == AsyncSceneLoaderScript.LoadStatus.LOADING
 
 func push_scene_async(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
 	if has_pending_load():
@@ -607,7 +607,7 @@ func push_scene_async(scene_path: String, payload_data: Variant = null, metadata
 	var previous_entry := peek_scene()
 	_maybe_save_before_transition(previous_entry, OP_PUSH)
 	var handle := _async_loader.start(scene_path, metadata)
-	if handle.status == FlowAsyncLoader.LoadStatus.FAILED:
+	if handle.status == AsyncSceneLoaderScript.LoadStatus.FAILED:
 		return handle.error
 	_pending_entry = _create_entry(scene_path, payload_data, metadata)
 	_pending_previous_entry = previous_entry
@@ -626,7 +626,7 @@ func replace_scene_async(scene_path: String, payload_data: Variant = null, metad
 	var previous_entry := peek_scene()
 	_maybe_save_before_transition(previous_entry, OP_REPLACE)
 	var handle := _async_loader.start(scene_path, metadata)
-	if handle.status == FlowAsyncLoader.LoadStatus.FAILED:
+	if handle.status == AsyncSceneLoaderScript.LoadStatus.FAILED:
 		return handle.error
 	_pending_entry = _create_entry(scene_path, payload_data, metadata)
 	_pending_previous_entry = previous_entry

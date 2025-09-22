@@ -5,12 +5,12 @@ const SCENE_ALPHA_PATH: String = "res://SceneFlow/TestScenes/SceneAlpha.tscn"
 const SCENE_BETA_PATH: String = "res://SceneFlow/TestScenes/SceneBeta.tscn"
 const TRANSITION_PLAYER_STUB_PATH: String = "res://SceneFlow/TestScenes/TransitionPlayerStub.tscn"
 
-const _FlowManager = preload("res://SceneFlow/FlowManager.gd")
-const FlowAsyncLoader = preload("res://SceneFlow/AsyncSceneLoader.gd")
-const FlowTransitionLibrary = preload("res://SceneFlow/Transitions/TransitionLibrary.gd")
-const FlowTransition = preload("res://SceneFlow/Transitions/TransitionResource.gd")
+const FlowManagerScript = preload("res://SceneFlow/FlowManager.gd")
+const AsyncSceneLoaderScript = preload("res://SceneFlow/AsyncSceneLoader.gd")
+const TransitionLibraryScript = preload("res://SceneFlow/Transitions/TransitionLibrary.gd")
+const TransitionResourceScript = preload("res://SceneFlow/Transitions/TransitionResource.gd")
 
-class TestFlowManager extends _FlowManager:
+class TestFlowManager extends FlowManagerScript:
 	var fake_scene: Node = null
 	var forced_error: Error = OK
 	var instantiated_scenes: Array[Node] = []

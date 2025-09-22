@@ -19,9 +19,9 @@ class LoadHandle extends RefCounted:
     var created_ms: int
     var metadata: Dictionary
 
-    func _init(scene_path: String, metadata: Dictionary = {}) -> void:
-        self.scene_path = scene_path
-        self.metadata = metadata.duplicate(true)
+    func _init(_scene_path: String, _metadata: Dictionary = {}) -> void:
+        self.scene_path = _scene_path
+        self.metadata = _metadata.duplicate(true)
         self.created_ms = Time.get_ticks_msec()
 
 var _handles: Dictionary = {}
@@ -69,7 +69,8 @@ func poll(handle: LoadHandle) -> void:
 func cancel(handle: LoadHandle) -> void:
     if handle == null or handle.status != LoadStatus.LOADING:
         return
-    ResourceLoader.load_threaded_cancel(handle.scene_path)
+    # Godot 4 doesn't have load_threaded_cancel() - mark as cancelled but let thread complete
+    # The thread will finish naturally and the result will be ignored
     handle.status = LoadStatus.CANCELLED
     _handles.erase(handle.scene_path)
 
@@ -81,7 +82,8 @@ func has_pending_requests() -> bool:
 
 func clear() -> void:
     for handle in _handles.values():
-        ResourceLoader.load_threaded_cancel(handle.scene_path)
+        # Godot 4 doesn't have load_threaded_cancel() - mark as cancelled but let threads complete
+        # The threads will finish naturally and the results will be ignored
         handle.status = LoadStatus.CANCELLED
     _handles.clear()
 
