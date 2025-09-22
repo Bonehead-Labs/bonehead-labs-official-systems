@@ -12,6 +12,14 @@ signal about_to_change(scene_path: String, entry: FlowStackEntry)
 signal scene_changed(scene_path: String, entry: FlowStackEntry)
 ## Emitted when a scene transition fails along with the error code and message.
 signal scene_error(scene_path: String, error_code: int, message: String)
+## Emitted when an asynchronous load starts.
+signal loading_started(scene_path: String, handle: FlowAsyncLoader.LoadHandle)
+## Emitted periodically with loading progress (0.0 - 1.0).
+signal loading_progress(scene_path: String, progress: float, metadata: Dictionary)
+## Emitted after an asynchronous load completes successfully.
+signal loading_finished(scene_path: String, handle: FlowAsyncLoader.LoadHandle)
+## Emitted when an asynchronous load is cancelled.
+signal loading_cancelled(scene_path: String, handle: FlowAsyncLoader.LoadHandle)
 
 class FlowPayload extends RefCounted:
 	var data: Variant
@@ -43,6 +51,11 @@ var _async_loader: FlowAsyncLoader = FlowAsyncLoader.new()
 var _loading_screen_scene: PackedScene = null
 var _loading_screen_parent_path: NodePath = NodePath()
 var _loading_screen_instance: FlowLoadingScreen = null
+var _pending_load: FlowAsyncLoader.LoadHandle = null
+var _pending_entry: FlowStackEntry = null
+var _pending_operation: StringName = StringName()
+var _pending_previous_entry: FlowStackEntry = null
+var _pending_metadata: Dictionary = {}
 
 func _ready() -> void:
 	if _stack.is_empty():
@@ -50,6 +63,21 @@ func _ready() -> void:
 		if current_scene:
 			var entry := FlowStackEntry.new(current_scene.scene_file_path, FlowPayload.new(null, {}, current_scene.scene_file_path))
 			_stack.append(entry)
+
+func _process(_delta: float) -> void:
+	if not has_pending_load():
+		return
+	_async_loader.poll(_pending_load)
+	if _pending_load.status == FlowAsyncLoader.LoadStatus.LOADING:
+		loading_progress.emit(_pending_load.scene_path, _pending_load.progress, _pending_metadata)
+		_update_loading_screen(_pending_load.progress, _pending_metadata)
+		return
+	if _pending_load.status == FlowAsyncLoader.LoadStatus.LOADED:
+		_finalize_pending_load(true)
+	elif _pending_load.status == FlowAsyncLoader.LoadStatus.FAILED:
+		_finalize_pending_load(false)
+	elif _pending_load.status == FlowAsyncLoader.LoadStatus.CANCELLED:
+		_handle_load_cancelled()
 
 ## Pushes a scene onto the stack and transitions to it.
 ## @param scene_path Resource path to the scene to activate.
@@ -158,10 +186,15 @@ func _change_to(entry: FlowStackEntry) -> Error:
 	if packed == null or not packed is PackedScene:
 		_emit_scene_error(entry.scene_path, ERR_FILE_CANT_OPEN, "Scene could not be loaded as PackedScene.")
 		return ERR_FILE_CANT_OPEN
+	var err := _activate_entry(entry, packed)
+	if err != OK:
+		_emit_scene_error(entry.scene_path, err, "change_scene_to_packed failed")
+	return err
+
+func _activate_entry(entry: FlowStackEntry, packed: PackedScene) -> Error:
 	about_to_change.emit(entry.scene_path, entry)
 	var err := _perform_scene_change(packed)
 	if err != OK:
-		_emit_scene_error(entry.scene_path, err, "change_scene_to_packed failed" )
 		return err
 	_deliver_payload(entry)
 	scene_changed.emit(entry.scene_path, entry)
@@ -177,6 +210,97 @@ func _deliver_payload(entry: FlowStackEntry) -> void:
 	active_scene.set_meta(&"flow_payload", payload)
 	if active_scene.has_method("receive_flow_payload"):
 		active_scene.call_deferred("receive_flow_payload", payload)
+
+func _finalize_pending_load(success: bool) -> void:
+	if success:
+		_complete_pending_load_success()
+	else:
+		_handle_load_failure()
+
+func _complete_pending_load_success() -> void:
+	var handle := _pending_load
+	if handle == null:
+		return
+	var entry := _pending_entry
+	var packed := handle.result
+	var err := OK
+	if _pending_operation == StringName("push"):
+		_stack.append(entry)
+		err = _activate_entry(entry, packed)
+	elif _pending_operation == StringName("replace"):
+		if _stack.is_empty():
+			_stack.append(entry)
+		else:
+			_stack[_stack.size() - 1] = entry
+		err = _activate_entry(entry, packed)
+	else:
+		err = ERR_UNCONFIGURED
+	if err == OK:
+		loading_finished.emit(handle.scene_path, handle)
+		_hide_loading_screen(true, {"scene_path": entry.scene_path})
+		_reset_pending_state()
+		return
+	_emit_scene_error(entry.scene_path, err, "Async scene activation failed")
+	_hide_loading_screen(false, {"scene_path": entry.scene_path, "error": err})
+	_reset_pending_state()
+
+func _handle_load_failure() -> void:
+	var handle := _pending_load
+	if handle == null:
+		return
+	_hide_loading_screen(false, {"scene_path": handle.scene_path, "error": handle.error})
+	_reset_pending_state()
+
+func _handle_load_cancelled() -> void:
+	var handle := _pending_load
+	if handle == null:
+		return
+	loading_cancelled.emit(handle.scene_path, handle)
+	_hide_loading_screen(false, {"scene_path": handle.scene_path, "cancelled": true})
+	_reset_pending_state()
+
+func _reset_pending_state() -> void:
+	_pending_load = null
+	_pending_entry = null
+	_pending_previous_entry = null
+	_pending_operation = StringName()
+	_pending_metadata = {}
+
+func _ensure_loading_screen(handle: FlowAsyncLoader.LoadHandle) -> void:
+	if _loading_screen_scene == null:
+		return
+	if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
+		_loading_screen_instance.begin_loading(handle)
+		return
+	var parent := _resolve_loading_screen_parent()
+	if parent == null:
+		return
+	var instance := _loading_screen_scene.instantiate()
+	if not (instance is FlowLoadingScreen):
+		push_warning("FlowManager expected FlowLoadingScreen but received %s" % [instance])
+		instance.queue_free()
+		return
+	_loading_screen_instance = instance
+	parent.add_child(instance)
+	_loading_screen_instance.begin_loading(handle)
+
+func _update_loading_screen(progress: float, metadata: Dictionary) -> void:
+	if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
+		_loading_screen_instance.update_progress(progress, metadata)
+
+func _hide_loading_screen(success: bool, metadata: Dictionary) -> void:
+	if _loading_screen_instance and is_instance_valid(_loading_screen_instance):
+		_loading_screen_instance.finish_loading(success, metadata)
+		if success:
+			_loading_screen_instance.queue_free()
+			_loading_screen_instance = null
+
+func _resolve_loading_screen_parent() -> Node:
+	if _loading_screen_parent_path.is_empty():
+		var scene := get_tree().current_scene
+		return scene if scene else get_tree().root
+	var node := get_node_or_null(_loading_screen_parent_path)
+	return node if node else get_tree().root
 
 func _emit_stack_event(topic: StringName, entry: FlowStackEntry, extra: Dictionary = {}) -> void:
 	if not analytics_enabled:
@@ -225,3 +349,42 @@ func clear_loading_screen() -> void:
 	_loading_screen_instance = null
 	_loading_screen_scene = null
 	_loading_screen_parent_path = NodePath()
+
+func has_pending_load() -> bool:
+	return _pending_load != null and _pending_load.status == FlowAsyncLoader.LoadStatus.LOADING
+
+func push_scene_async(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
+	if has_pending_load():
+		return ERR_BUSY
+	var handle := _async_loader.start(scene_path, metadata)
+	if handle.status == FlowAsyncLoader.LoadStatus.FAILED:
+		return handle.error
+	_pending_entry = _create_entry(scene_path, payload_data, metadata)
+	_pending_previous_entry = null
+	_pending_operation = StringName("push")
+	_pending_load = handle
+	_pending_metadata = metadata.duplicate(true)
+	loading_started.emit(scene_path, handle)
+	_ensure_loading_screen(handle)
+	return OK
+
+func replace_scene_async(scene_path: String, payload_data: Variant = null, metadata: Dictionary = {}) -> Error:
+	if has_pending_load():
+		return ERR_BUSY
+	var handle := _async_loader.start(scene_path, metadata)
+	if handle.status == FlowAsyncLoader.LoadStatus.FAILED:
+		return handle.error
+	_pending_entry = _create_entry(scene_path, payload_data, metadata)
+	_pending_previous_entry = _stack[-1] if _stack.size() > 0 else null
+	_pending_operation = StringName("replace")
+	_pending_load = handle
+	_pending_metadata = metadata.duplicate(true)
+	loading_started.emit(scene_path, handle)
+	_ensure_loading_screen(handle)
+	return OK
+
+func cancel_pending_load() -> void:
+	if not has_pending_load():
+		return
+	_async_loader.cancel(_pending_load)
+	_handle_load_cancelled()
