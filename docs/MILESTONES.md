@@ -5,12 +5,12 @@
 ## Scene Flow System
 
 ### Milestone 1: FlowManager Core Autoload
-- [ ] Implement `FlowManager.gd` autoload with typed public API (`push_scene`, `pop_scene`, `replace_scene`, `peek_scene`, `clear_stack`).
-- [ ] Persist stack entries with payload metadata structs to allow scene-to-scene data passing.
-- [ ] Emit typed signals for transition lifecycle (`about_to_change`, `scene_changed`, `scene_error`).
-- [ ] Publish opt-in analytics diagnostics via `EventBus` topics for stack operations.
-- [ ] Provide developer README covering usage patterns and EventBus topics.
-- [ ] Supply idempotent setup script to register the autoload via `ProjectSettings`.
+- [x] Implement `FlowManager.gd` autoload with typed public API (`push_scene`, `pop_scene`, `replace_scene`, `peek_scene`, `clear_stack`).
+- [x] Persist stack entries with payload metadata structs to allow scene-to-scene data passing.
+- [x] Emit typed signals for transition lifecycle (`about_to_change`, `scene_changed`, `scene_error`).
+- [x] Publish opt-in analytics diagnostics via `EventBus` topics for stack operations.
+- [x] Provide developer README covering usage patterns and EventBus topics.
+- [x] Supply idempotent setup script to register the autoload via `ProjectSettings`.
 
 ### Milestone 2: Async Loading & Loading Screen Hooks
 - [ ] Add asynchronous loader utility with progress reporting, cancellation guard, and deterministic replay hooks (consuming `RNGService` seeds when required).
