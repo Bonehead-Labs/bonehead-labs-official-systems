@@ -31,15 +31,13 @@ Examples:
 
 ## Local Verification Checklist
 
-Run the headless scripts before committing:
+Before committing:
 
-```bash
-scripts/ci/run_format_check.sh
-scripts/ci/run_static_checks.sh
-scripts/ci/run_gut_tests.sh
-```
+- Run `godot --headless --check-only` to ensure scripts pass type checks.
+- Format any GDScript changes using `gdformat` (if available) or your editor formatter.
+- Execute GUT suites via `godot --headless --script res://addons/gut/gut_cmdln.gd -gdir=res://<tests>`.
 
-Set `GODOT_BIN` if the project requires a non-default Godot binary path. Formatting validation requires `gdformat` (from gdtoolkit); the script skips gracefully when it is absent.
+Set `GODOT_BIN` when a non-default binary path is required. Keep `GUT_SORT_TESTS=1` for deterministic ordering if needed.
 
 ## Saving & Autoload Constraints
 

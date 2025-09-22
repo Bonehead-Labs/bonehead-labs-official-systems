@@ -12,45 +12,9 @@ export GODOT_BIN="$HOME/Applications/Godot_v4.5-stable_linux.x86_64"
 
 ## Static Analysis & Formatting
 
-Run static checks and optional formatting validation:
+Run static checks, formatting validation, and GUT tests using your preferred tooling (e.g., agentic automation or manual commands).
 
-```bash
-scripts/ci/run_static_checks.sh
-scripts/ci/run_format_check.sh   # requires `gdformat`
-```
-
-`run_static_checks.sh` wraps `godot --headless --check-only` to ensure all scripts type-check. The formatter script short-circuits when `gdformat` is unavailable, keeping CI pipelines portable.
-
-## Headless GUT Tests
-
-Execute all discovery-based GUT suites (any folder named `UnitTests`):
-
-```bash
-scripts/ci/run_gut_tests.sh
-```
-
-The runner:
-- scans for `UnitTests` directories and converts them to `res://` paths,
-- sets `GUT_SORT_TESTS=1` for deterministic ordering,
-- runs the standard GUT CLI (`res://addons/gut/gut_cmdln.gd`) with `-gexit` and `--headless`.
-
-## Suggested CI Workflow
-
-1. Install Godot 4.5 and (optionally) `gdformat`.
-2. Cache the `addons/` directory to speed up dependency fetches (contains GUT already).
-3. Run the scripts above in order:
-   - `scripts/ci/run_format_check.sh`
-   - `scripts/ci/run_static_checks.sh`
-   - `scripts/ci/run_gut_tests.sh`
-
-## Local Verification
-
-Before every Conventional Commit:
-
-```bash
-scripts/ci/run_format_check.sh
-scripts/ci/run_static_checks.sh
-scripts/ci/run_gut_tests.sh
-```
-
+- Type checks: `godot --headless --check-only`
+- Formatting: `gdformat` or editor-integrated formatters
+- Tests: `godot --headless --script res://addons/gut/gut_cmdln.gd -gdir=res://<tests>`
 If any command fails, resolve issues before committing to preserve a clean history and keep CI green.
