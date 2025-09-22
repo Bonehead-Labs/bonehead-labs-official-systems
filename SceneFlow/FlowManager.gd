@@ -39,6 +39,7 @@ class FlowStackEntry extends RefCounted:
 var _stack: Array[FlowStackEntry] = []
 ## When true, FlowManager will publish analytics events to EventBus.
 var analytics_enabled: bool = false
+var _async_loader: FlowAsyncLoader = FlowAsyncLoader.new()
 
 func _ready() -> void:
 	if _stack.is_empty():
