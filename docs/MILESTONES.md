@@ -91,9 +91,9 @@
 - [x] Provide example ability scripts and documentation.
 
 ### Milestone 5: Combat Hooks & Save Integration
-- [ ] Add damage intake methods forwarding to Combat system via signals.
-- [ ] Register save/load snapshot hooks with SaveService for persistent player state, mediated through `SettingsService` when appropriate.
-- [ ] Document serialization payload contract and failure handling.
+- [x] Add damage intake methods forwarding to Combat system via signals.
+- [x] Register save/load snapshot hooks with SaveService for persistent player state, mediated through `SettingsService` when appropriate.
+- [x] Document serialization payload contract and failure handling.
 
 ## Combat System
 
