@@ -239,10 +239,10 @@
 ## Cross-Cutting Modules
 
 ### Milestone 0: Repository & CI Foundation
-- [ ] Scaffold CI/headless scripts for linting and type checks (`godot --headless --check-only`, formatting, etc.).
-- [ ] Provide reusable headless GUT test runner script and document CI integration.
-- [ ] Author contribution guide outlining Conventional Commit usage and local verification steps.
-- [ ] Supply developer tooling to enforce commit message style (e.g., git hook template) without modifying global config.
+- [x] Scaffold CI/headless scripts for linting and type checks (`godot --headless --check-only`, formatting, etc.).
+- [x] Provide reusable headless GUT test runner script and document CI integration.
+- [x] Author contribution guide outlining Conventional Commit usage and local verification steps.
+- [x] Supply developer tooling to enforce commit message style (e.g., git hook template) without modifying global config.
 
 ### Milestone 1: Autoload & InputMap Setup Utilities
 - [ ] Create reusable setup scripts for registering autoloads idempotently.
