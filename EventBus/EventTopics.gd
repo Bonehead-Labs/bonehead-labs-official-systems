@@ -76,16 +76,20 @@ const FACTION_REGISTERED       : StringName = &"faction/registered"       # {fac
 const FACTION_UNREGISTERED     : StringName = &"faction/unregistered"     # {faction, timestamp_ms}
 const FACTION_RELATIONSHIP_CHANGED : StringName = &"faction/relationship_changed" # {faction_a, faction_b, relationship, timestamp_ms}
 
+# Enemy AI Events
+const ENEMY_SPAWNED           : StringName = &"enemy/spawned"            # {enemy_type, enemy_name, faction, position, config, timestamp_ms}
+const ENEMY_ALERTED           : StringName = &"enemy/alerted"            # {enemy_type, enemy_name, faction, target, position, timestamp_ms}
+const ENEMY_DEFEATED          : StringName = &"enemy/defeated"           # {enemy_type, enemy_name, faction, cause, damage_source, final_health, position, timestamp_ms}
+const ENEMY_STATE_CHANGED     : StringName = &"enemy/state_changed"      # {enemy_type, enemy_name, faction, old_state, new_state, timestamp_ms}
+
 # ───────────────────────────────────────────────────────────────────────────────
 # ENEMY (spawn, perception, death)
 # ───────────────────────────────────────────────────────────────────────────────
-const ENEMY_SPAWNED           : StringName = &"enemy/spawned"            # {id, type, pos}
 const ENEMY_DESPAWNED         : StringName = &"enemy/despawned"          # {id}
 const ENEMY_PERCEIVED_PLAYER  : StringName = &"enemy/perceived_player"   # {id, kind:"sight"|"sound", pos?}
 const ENEMY_LOST_PLAYER       : StringName = &"enemy/lost_player"        # {id}
 const ENEMY_DAMAGED           : StringName = &"enemy/damaged"            # {id, amount, hp_after, source?}
 const ENEMY_DIED              : StringName = &"enemy/died"               # {id, source?}
-const ENEMY_STATE_CHANGED     : StringName = &"enemy/state_changed"      # {id, from, to}
 const ENEMY_ATTACK_STARTED    : StringName = &"enemy/attack_started"     # {id, attack?}
 const ENEMY_ATTACK_LANDED     : StringName = &"enemy/attack_landed"      # {id, amount, target?}
 
@@ -193,8 +197,9 @@ static var ALL : Array[StringName] = [
     PLAYER_ABILITY_USED,
 
     # enemy
-    ENEMY_SPAWNED, ENEMY_DESPAWNED, ENEMY_PERCEIVED_PLAYER, ENEMY_LOST_PLAYER,
-    ENEMY_DAMAGED, ENEMY_DIED, ENEMY_STATE_CHANGED, ENEMY_ATTACK_STARTED, ENEMY_ATTACK_LANDED,
+    ENEMY_SPAWNED, ENEMY_ALERTED, ENEMY_DEFEATED, ENEMY_STATE_CHANGED,
+    ENEMY_DESPAWNED, ENEMY_PERCEIVED_PLAYER, ENEMY_LOST_PLAYER,
+    ENEMY_DAMAGED, ENEMY_DIED, ENEMY_ATTACK_STARTED, ENEMY_ATTACK_LANDED,
 
     # combat
     COMBAT_HIT, COMBAT_BLOCKED, COMBAT_PARRIED, COMBAT_HEAL, COMBAT_KNOCKBACK,

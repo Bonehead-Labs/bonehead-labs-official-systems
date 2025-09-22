@@ -130,10 +130,10 @@
 ## Enemy AI (2D)
 
 ### Milestone 1: Enemy Base & FSM Integration
-- [ ] Develop enemy base class leveraging shared FSM with movement/combat hooks (consuming the FSM Toolkit from Cross-Cutting Modules).
-- [ ] Provide configuration resource for stats/behaviour parameters.
-- [ ] Document required nodes (CollisionShape2D, sensors) and setup.
-- [ ] Add signals for spawned, alerted, defeated and analytics emission toggles.
+- [x] Develop enemy base class leveraging shared FSM with movement/combat hooks (consuming the FSM Toolkit from Cross-Cutting Modules).
+- [x] Provide configuration resource for stats/behaviour parameters.
+- [x] Document required nodes (CollisionShape2D, sensors) and setup.
+- [x] Add signals for spawned, alerted, defeated and analytics emission toggles.
 
 ### Milestone 2: Perception & Navigation
 - [ ] Implement Area2D-based perception cones and proximity sensors.
