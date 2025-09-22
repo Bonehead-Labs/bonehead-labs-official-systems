@@ -1,5 +1,7 @@
 extends HSlider
 
+const ROOT_THEME_SERVICE_PATH: NodePath = NodePath("/root/ThemeService")
+
 @export var accent_color_token: StringName = StringName("accent")
 @export var track_color_token: StringName = StringName("surface_alt")
 
@@ -7,10 +9,18 @@ func _ready() -> void:
     _apply_theme()
     _connect_theme_changed()
 
+func _exit_tree() -> void:
+    var theme_service := _theme_service()
+    if theme_service and theme_service.theme_changed.is_connected(_on_theme_changed):
+        theme_service.theme_changed.disconnect(_on_theme_changed)
+
 func _connect_theme_changed() -> void:
     var theme_service := _theme_service()
-    if theme_service and not theme_service.theme_changed.is_connected(_apply_theme):
-        theme_service.theme_changed.connect(_apply_theme)
+    if theme_service and not theme_service.theme_changed.is_connected(_on_theme_changed):
+        theme_service.theme_changed.connect(_on_theme_changed)
+
+func _on_theme_changed() -> void:
+    _apply_theme()
 
 func _apply_theme() -> void:
     var theme_service := _theme_service()
@@ -43,5 +53,5 @@ func _create_bar(track: Color, accent: Color) -> StyleBox:
     style.set_corner_radius_all(4)
     return style
 
-func _theme_service():
-    return Engine.get_singleton("ThemeService") if Engine.has_singleton("ThemeService") else null
+func _theme_service() -> _ThemeService:
+    return get_node_or_null(ROOT_THEME_SERVICE_PATH) as _ThemeService

@@ -24,7 +24,7 @@ func load_tokens(resource_path: String) -> void:
     if loaded is ThemeTokens:
         _tokens = loaded
         _focus_style_cache = null
-        theme_changed.emit()
+        emit_signal("theme_changed")
     else:
         push_warning("ThemeService: resource at %s is not ThemeTokens" % resource_path)
 
@@ -34,7 +34,7 @@ func enable_high_contrast(enabled: bool) -> void:
         return
     _use_high_contrast = enabled
     _focus_style_cache = null
-    theme_changed.emit()
+    emit_signal("theme_changed")
 
 ## Returns true when high-contrast mode is active.
 func is_high_contrast_enabled() -> bool:

@@ -1,5 +1,8 @@
 extends Label
 
+const ROOT_THEME_SERVICE_PATH: NodePath = NodePath("/root/ThemeService")
+const ROOT_LOCALIZATION_PATH: NodePath = NodePath("/root/ThemeLocalization")
+
 @export var label_token: StringName
 @export var label_fallback: String = ""
 @export var size_token: StringName = StringName("body")
@@ -9,6 +12,11 @@ func _ready() -> void:
     _apply_theme()
     _update_text()
     _connect_theme_changed()
+
+func _exit_tree() -> void:
+    var theme_service := _theme_service()
+    if theme_service and theme_service.theme_changed.is_connected(_on_theme_changed):
+        theme_service.theme_changed.disconnect(_on_theme_changed)
 
 func _connect_theme_changed() -> void:
     var theme_service := _theme_service()
@@ -32,8 +40,8 @@ func _update_text() -> void:
     elif not label_fallback.is_empty():
         text = label_fallback
 
-func _theme_service():
-    return Engine.get_singleton("ThemeService") if Engine.has_singleton("ThemeService") else null
+func _theme_service() -> _ThemeService:
+    return get_node_or_null(ROOT_THEME_SERVICE_PATH) as _ThemeService
 
-func _localization():
-    return Engine.get_singleton("ThemeLocalization") if Engine.has_singleton("ThemeLocalization") else null
+func _localization() -> _ThemeLocalization:
+    return get_node_or_null(ROOT_LOCALIZATION_PATH) as _ThemeLocalization

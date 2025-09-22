@@ -9,9 +9,11 @@ var localization: _ThemeLocalization
 
 func before_each() -> void:
     theme_service = load(ThemeServicePath).new()
+    theme_service.name = "ThemeService"
     get_tree().root.add_child(theme_service)
     await theme_service.ready
     localization = load(LocalizationHelperPath).new()
+    localization.name = "ThemeLocalization"
     get_tree().root.add_child(localization)
     await localization.ready
 
