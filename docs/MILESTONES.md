@@ -156,28 +156,28 @@
 ## Items & Economy
 
 ### Milestone 1: Item Definitions & InventoryLite
-- [ ] Define `ItemDef` Resource schema for stats, rarity, tags.
-- [ ] Implement lightweight inventory component with capacity rules and signals.
-- [ ] Provide serialization snapshots via SaveService hooks using `SettingsService` helpers for preference storage.
-- [ ] Document resource authoring workflow and analytics opt-in points.
+- [x] Define `ItemDef` Resource schema for stats, rarity, tags.
+- [x] Implement lightweight inventory component with capacity rules and signals.
+- [x] Provide serialization snapshots via SaveService hooks using `SettingsService` helpers for preference storage.
+- [x] Document resource authoring workflow and analytics opt-in points.
 
 ### Milestone 2: Loot Tables & Pickup/Drop
-- [ ] Create `LootTable` Resource with weighted entries and conditions leveraging `RNGService` for deterministic draws.
-- [ ] Implement pickup/drop nodes referencing item defs and auto-collect rules.
-- [ ] Emit pickup/drop events over EventBus for analytics/HUD updates.
-- [ ] Document hooking loot tables into combat/world events.
+- [x] Create `LootTable` Resource with weighted entries and conditions leveraging `RNGService` for deterministic draws.
+- [x] Implement pickup/drop nodes referencing item defs and auto-collect rules.
+- [x] Emit pickup/drop events over EventBus for analytics/HUD updates.
+- [x] Document hooking loot tables into combat/world events.
 
 ### Milestone 3: Currency Wallet & Shop System
-- [ ] Implement wallet component supporting multiple currencies with validation.
-- [ ] Create shop system scenes for buying/selling leveraging UI widgets and localization tokens.
-- [ ] Integrate InputService actions for navigation and confirm/cancel, with analytics logging.
-- [ ] Document shop configuration and extensibility points.
+- [x] Implement wallet component supporting multiple currencies with validation.
+- [x] Create shop system scenes for buying/selling leveraging UI widgets and localization tokens.
+- [x] Integrate InputService actions for navigation and confirm/cancel, with analytics logging.
+- [x] Document shop configuration and extensibility points.
 
 ### Milestone 4: Crafting, Upgrades, Equipment
-- [ ] Build crafting module handling recipes, validation, and outcomes using deterministic RNG hooks when randomization is required.
-- [ ] Implement equipment slots system applying stat modifiers to player/enemies.
-- [ ] Provide upgrade progression hooks tied to SaveService persistence.
-- [ ] Document crafting/equipment APIs with examples and analytics instrumentation guidance.
+- [x] Build crafting module handling recipes, validation, and outcomes using deterministic RNG hooks when randomization is required.
+- [x] Implement equipment slots system applying stat modifiers to player/enemies.
+- [x] Provide upgrade progression hooks tied to SaveService persistence.
+- [x] Document crafting/equipment APIs with examples and analytics instrumentation guidance.
 
 ## World System
 
