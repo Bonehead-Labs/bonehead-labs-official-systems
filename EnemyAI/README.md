@@ -213,6 +213,34 @@ health.connect("health_changed", _on_enemy_health_changed)
 enemy.take_damage(25.0, player, "physical")
 ```
 
+### Debug Visualization
+
+Enable perception and FOV debug drawing via `EnemyConfig`:
+
+```
+config.debug_draw_perception = true
+config.debug_draw_fov = true
+```
+
+The `EnemyBase` will draw detection radius and FOV wedge. This is editor- and build-safe and only draws when the flags are enabled.
+
+## Navigation and Steering
+
+When `EnemyConfig.use_navigation` is true (default), `EnemyBase` attaches a `NavigationAgent2D` and uses it in `move_toward()` to steer along navigable paths with avoidance.
+
+```
+config.use_navigation = true
+config.path_update_interval = 0.35
+```
+
+`ChaseState` updates the target position periodically using `path_update_interval`. If navigation is disabled, movement falls back to direct steering toward the target.
+
+### Tuning and Determinism
+
+- Use `detection_range`, `field_of_view_angle`, and `alert_duration` to control perception.
+- For tests that require determinism, keep timers (`path_update_interval`, patrol wait time) fixed and gate any randomness behind `RNGService` once available.
+
+
 ### Attack Implementation
 
 ```gdscript

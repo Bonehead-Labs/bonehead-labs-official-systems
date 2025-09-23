@@ -3,11 +3,11 @@ extends FSMState
 
 ## State for enemy chase behavior - pursues alert target.
 
-const EnemyBase = preload("../EnemyBase.gd")
-const EnemyConfig = preload("../EnemyConfig.gd")
+const EnemyBaseScript = preload("../EnemyBase.gd")
+const EnemyConfigScript = preload("../EnemyConfig.gd")
 
-var _enemy: EnemyBase
-var _config: EnemyConfig
+var _enemy: EnemyBaseScript
+var _config: EnemyConfigScript
 var _last_known_target_position: Vector2
 var _chase_timer: float = 0.0
 var _max_chase_time: float = 30.0  # Give up after this many seconds
@@ -66,11 +66,13 @@ func update(delta: float) -> void:
     _enemy.flip_sprite_to_face(_last_known_target_position)
 
 func physics_update(delta: float) -> void:
-    # Path update logic would go here if using navigation
+    # Path update interval for NavigationAgent2D
     _path_update_timer += delta
     if _path_update_timer >= (_config.path_update_interval if _config else 0.5):
         _path_update_timer = 0.0
-        # Update path to target if using navigation
+        var target = _enemy.get_alert_target()
+        if target:
+            _last_known_target_position = target.global_position
 
 func handle_event(event: StringName, _data: Variant = null) -> void:
     match event:

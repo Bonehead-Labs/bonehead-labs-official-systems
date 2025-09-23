@@ -36,9 +36,13 @@ var _is_defeated: bool = false
 # Movement
 var _velocity: Vector2 = Vector2.ZERO
 var _facing_direction: Vector2 = Vector2.RIGHT
+var _nav_agent: NavigationAgent2D
+var _debug_time: float = 0.0
 
 func _ready() -> void:
     _setup_components()
+    _setup_perception()
+    _setup_navigation()
     _setup_state_machine()
     _setup_visuals()
     _connect_signals()
@@ -86,6 +90,37 @@ func _setup_components() -> void:
         _death_handler.emit_analytics = config.emit_analytics
         _death_handler.death_animation_duration = config.death_animation_duration
     add_child(_death_handler)
+
+func _setup_perception() -> void:
+    # Ensure a PerceptionArea exists; create if missing based on config
+    var area: Area2D = get_node_or_null("PerceptionArea")
+    if area == null:
+        area = Area2D.new()
+        area.name = "PerceptionArea"
+        var collision := CollisionShape2D.new()
+        var shape := CircleShape2D.new()
+        shape.radius = (config.detection_range if config else 150.0)
+        collision.shape = shape
+        area.add_child(collision)
+        add_child(area)
+
+    # Connect signals safely
+    if not area.body_entered.is_connected(_on_body_detected):
+        area.body_entered.connect(_on_body_detected)
+    if not area.body_exited.is_connected(_on_body_lost):
+        area.body_exited.connect(_on_body_lost)
+
+func _setup_navigation() -> void:
+    if config and not config.use_navigation:
+        return
+    _nav_agent = get_node_or_null("NavigationAgent2D") as NavigationAgent2D
+    if _nav_agent == null:
+        _nav_agent = NavigationAgent2D.new()
+        _nav_agent.name = "NavigationAgent2D"
+        _nav_agent.radius = 8.0
+        add_child(_nav_agent)
+    _nav_agent.avoidance_enabled = true
+    _nav_agent.target_reached_connect(_on_nav_target_reached)
 
 func _setup_state_machine() -> void:
     _state_machine = StateMachineScript.new()
@@ -158,6 +193,27 @@ func _physics_process(delta: float) -> void:
     if _velocity.x != 0:
         _facing_direction = Vector2(sign(_velocity.x), 0)
 
+    if config and (config.debug_draw_perception or config.debug_draw_fov):
+        _debug_time += delta
+        if _debug_time >= 0.05:
+            _debug_time = 0.0
+            queue_redraw()
+
+func _draw() -> void:
+    if config == null:
+        return
+    if config.debug_draw_perception:
+        draw_circle(Vector2.ZERO, config.detection_range, Color(0.0, 1.0, 0.0, 0.15))
+        draw_circle(Vector2.ZERO, config.detection_range, Color(0.0, 1.0, 0.0, 0.4))
+    if config.debug_draw_fov:
+        var half_angle := deg_to_rad(config.field_of_view_angle * 0.5)
+        var dir := _facing_direction.normalized()
+        var left := dir.rotated(-half_angle) * config.detection_range
+        var right := dir.rotated(half_angle) * config.detection_range
+        draw_line(Vector2.ZERO, left, Color(1.0, 0.8, 0.0, 0.8), 1.0)
+        draw_line(Vector2.ZERO, right, Color(1.0, 0.8, 0.0, 0.8), 1.0)
+        draw_colored_polygon([Vector2.ZERO, left, right], Color(1.0, 0.8, 0.0, 0.08))
+
 func _on_state_changed(old_state: StringName, new_state: StringName) -> void:
     _current_state = new_state
     state_changed.emit(self, old_state, new_state)
@@ -180,6 +236,9 @@ func alert(target: Node2D) -> void:
                 "target": String(target.name) if target else "unknown",
                 "position": global_position
             })
+        # Inform states
+        if _state_machine:
+            _state_machine.emit_state_event(&"alerted", target)
 
 func _lose_alert() -> void:
     _alert_target = null
@@ -196,8 +255,16 @@ func move_toward(target_position: Vector2, speed: float = -1.0) -> void:
     if speed < 0:
         speed = config.movement_speed if config else 100.0
 
-    var direction = (target_position - global_position).normalized()
-    _velocity = _velocity.move_toward(direction * speed, (config.acceleration if config else 800.0) * get_physics_process_delta_time())
+    var desired: Vector2
+    if _nav_agent != null and (config == null or config.use_navigation):
+        if _nav_agent.target_position != target_position:
+            _nav_agent.target_position = target_position
+        var next_point := _nav_agent.get_next_path_position()
+        desired = (next_point - global_position).normalized() * speed
+    else:
+        desired = (target_position - global_position).normalized() * speed
+    var accel := (config.acceleration if config else 800.0) * get_physics_process_delta_time()
+    _velocity = _velocity.move_toward(desired, accel)
 
 func stop_moving() -> void:
     _velocity = _velocity.move_toward(Vector2.ZERO, (config.friction if config else 600.0) * get_physics_process_delta_time())
@@ -263,7 +330,26 @@ func _on_body_lost(body: Node2D) -> void:
 func _should_alert_to_body(body: Node2D) -> bool:
     # Override in subclasses to define what triggers alerts
     # Default: alert to anything with "player" group
-    return body.is_in_group("player")
+    if not body.is_in_group("player"):
+        return false
+    # Field-of-view check
+    if config != null and config.field_of_view_angle < 360.0:
+        var to_target := (body.global_position - global_position).normalized()
+        var facing := _facing_direction.normalized()
+        var angle := rad_to_deg(acos(clamp(facing.dot(to_target), -1.0, 1.0)))
+        if angle > config.field_of_view_angle * 0.5:
+            return false
+    # Range check (redundant with Area2D radius if created externally)
+    if config != null:
+        if global_position.distance_to(body.global_position) > config.detection_range:
+            return false
+    return true
+
+## Navigation callbacks
+func _on_nav_target_reached() -> void:
+    # Allow states to react when path goal is reached
+    if _state_machine:
+        _state_machine.emit_state_event(&"nav_target_reached")
 
 ## Animation helpers
 func play_animation(animation: String, speed: float = 1.0) -> void:

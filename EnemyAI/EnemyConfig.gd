@@ -29,6 +29,7 @@ extends Resource
 @export var chase_speed: float = 120.0
 @export var path_update_interval: float = 0.5
 @export var waypoint_tolerance: float = 10.0
+@export var use_navigation: bool = true
 
 @export_category("Behavior")
 @export var faction: String = "enemy"
@@ -45,6 +46,8 @@ extends Resource
 @export var sprite_scale: Vector2 = Vector2.ONE
 @export var animation_speed: float = 1.0
 @export var death_animation_duration: float = 2.0
+@export var debug_draw_perception: bool = false
+@export var debug_draw_fov: bool = true
 
 @export_category("Analytics")
 @export var emit_analytics: bool = true
@@ -130,6 +133,7 @@ func to_dictionary() -> Dictionary:
         "chase_speed": chase_speed,
         "path_update_interval": path_update_interval,
         "waypoint_tolerance": waypoint_tolerance,
+        "use_navigation": use_navigation,
         "faction": faction,
         "friendly_fire": friendly_fire,
         "can_jump": can_jump,
@@ -140,6 +144,8 @@ func to_dictionary() -> Dictionary:
         "sprite_scale": sprite_scale,
         "animation_speed": animation_speed,
         "death_animation_duration": death_animation_duration,
+        "debug_draw_perception": debug_draw_perception,
+        "debug_draw_fov": debug_draw_fov,
         "emit_analytics": emit_analytics,
         "analytics_category": analytics_category
     }
