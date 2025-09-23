@@ -182,34 +182,34 @@
 ## World System
 
 ### Milestone 1: Checkpoint Manager
-- [ ] Implement `CheckpointManager` singleton owning checkpoint data & SaveService integration.
-- [ ] Expose APIs for registering checkpoints, activating, and querying current state.
-- [ ] Emit checkpoint events for FlowManager/Player systems with optional analytics payloads.
-- [ ] Document checkpoint setup and best practices.
+- [x] Implement `CheckpointManager` singleton owning checkpoint data & SaveService integration.
+- [x] Expose APIs for registering checkpoints, activating, and querying current state.
+- [x] Emit checkpoint events for FlowManager/Player systems with optional analytics payloads.
+- [x] Document checkpoint setup and best practices.
 
 ### Milestone 2: Interactable Base Nodes
-- [ ] Create interactable interface/base class with standard signals.
-- [ ] Provide prefab scenes for Door, Lever, Chest, Button using composition.
-- [ ] Integrate with Player interaction detector and EventBus, including analytics hooks.
-- [ ] Document how to extend base interactable behaviours.
+- [x] Create interactable interface/base class with standard signals.
+- [x] Provide prefab scenes for Door, Lever, Chest, Button using composition.
+- [x] Integrate with Player interaction detector and EventBus, including analytics hooks.
+- [x] Document how to extend base interactable behaviours.
 
 ### Milestone 3: Level Loader & Portals
-- [ ] Develop level loader helper using FlowManager for scene transitions.
-- [ ] Implement portal nodes handling entry/exit conditions and payloads.
-- [ ] Provide safeguards against missing destinations, emit diagnostics, and route analytics events.
-- [ ] Document level linking workflow and deterministic seed sharing when needed.
+- [x] Develop level loader helper using FlowManager for scene transitions.
+- [x] Implement portal nodes handling entry/exit conditions and payloads.
+- [x] Provide safeguards against missing destinations, emit diagnostics, and route analytics events.
+- [x] Document level linking workflow and deterministic seed sharing when needed.
 
 ### Milestone 4: Hazards & Destructibles
-- [ ] Implement hazard volumes dealing periodic or instant damage via Combat system.
-- [ ] Provide destructible prop framework with health integration and loot hooks.
-- [ ] Emit analytics events for destruction/hazard triggers.
-- [ ] Document hooking hazards with checkpoints and respawn logic.
+- [x] Implement hazard volumes dealing periodic or instant damage via Combat system.
+- [x] Provide destructible prop framework with health integration and loot hooks.
+- [x] Emit analytics events for destruction/hazard triggers.
+- [x] Document hooking hazards with checkpoints and respawn logic.
 
 ### Milestone 5: Physics Layers & World Time Manager
-- [ ] Author central physics layer definition resource and guarded setup script.
-- [ ] Implement optional world time manager stub with pause/resume API.
-- [ ] Document physics layer expectations for level designers.
-- [ ] Outline extension plan for full time-of-day system informed by deterministic RNG requirements.
+- [x] Author central physics layer definition resource and guarded setup script.
+- [x] Implement optional world time manager stub with pause/resume API.
+- [x] Document physics layer expectations for level designers.
+- [x] Outline extension plan for full time-of-day system informed by deterministic RNG requirements.
 
 ## Debug & QA Tools
 
@@ -243,18 +243,6 @@
 - [x] Provide reusable headless GUT test runner script and document CI integration.
 - [x] Author contribution guide outlining Conventional Commit usage and local verification steps.
 - [x] Supply developer tooling to enforce commit message style (e.g., git hook template) without modifying global config.
-
-### Milestone 1: Autoload & InputMap Setup Utilities
-- [ ] Create reusable setup scripts for registering autoloads idempotently.
-- [ ] Author input action source-of-truth resource/JSON with loader script using `InputMap` APIs.
-- [ ] Document execution steps for these setup helpers.
-- [ ] Ensure scripts guard against editor execution and respect existing user bindings.
-
-### Milestone 2: Shared Transition Library (UI + Scene Flow)
-- [ ] Finalize shared transition resource definitions consumable by both systems.
-- [ ] Provide factory/helpers for common transitions (fade, wipe, slide).
-- [ ] Document integration patterns for other modules to adopt transitions.
-- [ ] Supply sample scenes demonstrating usage.
 
 ### Milestone 3: FSM Toolkit (Player + Enemy)
 - [x] Extract FSM framework into standalone module under `systems/fsm`.
