@@ -136,22 +136,22 @@
 - [x] Add signals for spawned, alerted, defeated and analytics emission toggles.
 
 ### Milestone 2: Perception & Navigation
-- [ ] Implement Area2D-based perception cones and proximity sensors.
-- [ ] Integrate Navigation2D pathing with steering helpers.
-- [ ] Expose debug visualization toggles via Debug Tools system.
-- [ ] Document tuning of detection ranges and path weights, including deterministic RNG handling.
+- [x] Implement Area2D-based perception cones and proximity sensors.
+- [x] Integrate Navigation2D pathing with steering helpers.
+- [x] Expose debug visualization toggles via Debug Tools system.
+- [x] Document tuning of detection ranges and path weights, including deterministic RNG handling.
 
 ### Milestone 3: Attack Modules & Steering
-- [ ] Create pluggable attack behaviours (melee, ranged, special) using Strategy pattern.
-- [ ] Provide steering helpers (seek, flee, wander) for smooth movement.
-- [ ] Emit attack lifecycle events for Combat system listeners and analytics subscribers.
-- [ ] Document module interface so designers can extend behaviours.
+- [x] Create pluggable attack behaviours (melee, ranged, special) using Strategy pattern.
+- [x] Provide steering helpers (seek, flee, wander) for smooth movement.
+- [x] Emit attack lifecycle events for Combat system listeners and analytics subscribers.
+- [x] Document module interface so designers can extend behaviours.
 
 ### Milestone 4: Spawner & Wave Manager
-- [ ] Build enemy spawner nodes with pooling and spawn rules integrated with the shared object pooling utility.
-- [ ] Implement wave manager resource to sequence encounters.
-- [ ] Hook spawn/clear events into FlowManager or World triggers, with analytics instrumentation.
-- [ ] Document integration with level scripts, SaveService persistence, and deterministic seed reuse.
+- [x] Build enemy spawner nodes with pooling and spawn rules integrated with the shared object pooling utility.
+- [x] Implement wave manager resource to sequence encounters.
+- [x] Hook spawn/clear events into FlowManager or World triggers, with analytics instrumentation.
+- [x] Document integration with level scripts, SaveService persistence, and deterministic seed reuse.
 
 ## Items & Economy
 
