@@ -214,27 +214,27 @@
 ## Debug & QA Tools
 
 ### Milestone 1: Performance Overlay & Log Window
-- [ ] Create overlay UI showing FPS, frame time, memory, and custom metrics.
-- [ ] Develop log window subscribing to EventBus diagnostics topics.
-- [ ] Provide toggles via debug keybinds (using InputService action definitions).
-- [ ] Document enabling/disabling overlay in builds.
+- [x] Create overlay UI showing FPS, frame time, memory, and custom metrics.
+- [x] Develop log window subscribing to EventBus diagnostics topics.
+- [x] Provide toggles via debug keybinds (using InputService action definitions).
+- [x] Document enabling/disabling overlay in builds.
 
 ### Milestone 2: Debug Console, Cheat Menu & Security Gating
-- [ ] Implement in-game console with command registry and permission levels.
-- [ ] Build cheat/QA menu interfacing with Player/World systems safely.
-- [ ] Gate console activation behind secure dev-only flag/environment configuration with audited access logs.
-- [ ] Document how to register new commands, secure the interface, and route analytics.
+- [x] Implement in-game console with command registry and permission levels.
+- [x] Build cheat/QA menu interfacing with Player/World systems safely.
+- [x] Gate console activation behind secure dev-only flag/environment configuration with audited access logs.
+- [x] Document how to register new commands, secure the interface, and route analytics.
 
 ### Milestone 3: EventBus Inspector & Scene Tester
-- [ ] Create inspector tool visualizing EventBus topics and payloads.
-- [ ] Build scene tester utility for loading scenes with mock services.
-- [ ] Ensure tools run in editor and standalone builds guarded by flags.
-- [ ] Document usage within QA workflows.
+- [x] Create inspector tool visualizing EventBus topics and payloads.
+- [x] Build scene tester utility for loading scenes with mock services.
+- [x] Ensure tools run in editor and standalone builds guarded by flags.
+- [x] Document usage within QA workflows.
 
 ### Milestone 4: Crash Reporter & Config Access
-- [ ] Provide optional crash reporter stub hooking into Godot crash signals.
-- [ ] Implement configuration access control for enabling debug features.
-- [ ] Document integration steps, production safeguards, and analytics opt-in patterns.
+- [x] Provide optional crash reporter stub hooking into Godot crash signals.
+- [x] Implement configuration access control for enabling debug features.
+- [x] Document integration steps, production safeguards, and analytics opt-in patterns.
 
 ## Cross-Cutting Modules
 
