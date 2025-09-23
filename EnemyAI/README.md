@@ -240,6 +240,26 @@ config.path_update_interval = 0.35
 - Use `detection_range`, `field_of_view_angle`, and `alert_duration` to control perception.
 - For tests that require determinism, keep timers (`path_update_interval`, patrol wait time) fixed and gate any randomness behind `RNGService` once available.
 
+## Attack Modules (Strategy)
+
+Attacks are pluggable modules implementing a simple strategy interface:
+
+```
+var attack = MeleeAttack.new()
+enemy.get_state_machine().register_state(&"attack", AttackState.new())
+enemy.get_state_machine().transition_to(&"attack", {&"target": player, &"attack": attack})
+```
+
+Events emitted via `EventBus` (opt-in): `enemy/attack_attack_started`, `enemy/attack_attack_finished`, `enemy/attack_attack_cancelled`.
+
+## Spawner and Waves
+
+`EnemySpawner` can spawn enemies at intervals with a max-alive limit. `WaveManager` resource can drive scripted waves.
+
+### FlowManager/World Integration
+
+Spawner publishes `enemy/spawned_from_spawner` via `EventBus` for analytics or world triggers. Hook these to FlowManager or World systems to start encounters, checkpoints, or transitions.
+
 
 ### Attack Implementation
 
