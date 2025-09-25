@@ -3,8 +3,8 @@ extends FSMState
 
 ## State for enemy patrol behavior - moves between waypoints.
 
-const EnemyBase = preload("../EnemyBase.gd")
-const EnemyConfig = preload("../EnemyConfig.gd")
+const EnemyBaseScript = preload("../EnemyBase.gd")
+const EnemyConfigScript = preload("../EnemyConfig.gd")
 
 var _enemy: EnemyBase
 var _config: EnemyConfig
@@ -16,8 +16,13 @@ var _wait_time: float = 2.0
 
 func setup(state_machine: StateMachine, state_owner: Node, state_context: Dictionary[StringName, Variant]) -> void:
     super.setup(state_machine, state_owner, state_context)
-    _enemy = state_context[&"enemy"]
-    _config = state_context[&"config"]
+    
+    # Validate required context keys
+    if not validate_context([&"enemy", &"config"]):
+        return
+    
+    _enemy = get_context_value(&"enemy", null, TYPE_OBJECT) as EnemyBaseScript
+    _config = get_context_value(&"config", null, TYPE_OBJECT) as EnemyConfigScript
 
     if _config:
         _waypoint_tolerance = _config.waypoint_tolerance
@@ -68,14 +73,14 @@ func update(delta: float) -> void:
 func physics_update(_delta: float) -> void:
     # Handle alert transitions
     if _enemy.is_alerted():
-        machine.transition_to(&"chase", {&"reason": &"alerted"})
+        safe_transition_to(&"chase", {}, &"alerted")
 
 func handle_event(event: StringName, _data: Variant = null) -> void:
     match event:
         &"alerted":
-            machine.transition_to(&"chase", {&"reason": &"alerted"})
+            safe_transition_to(&"chase", {}, &"alerted")
         &"damaged":
-            machine.transition_to(&"chase", {&"reason": &"damaged"})
+            safe_transition_to(&"chase", {}, &"damaged")
 
 func _move_to_next_waypoint() -> void:
     _current_waypoint_index = (_current_waypoint_index + 1) % _waypoints.size()

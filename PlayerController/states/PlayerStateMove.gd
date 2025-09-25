@@ -1,7 +1,7 @@
 extends "res://PlayerController/states/PlayerMovementState.gd"
 
 func enter(payload: Dictionary[StringName, Variant] = {}) -> void:
-    emit_event(StringName("move_entered"), payload)
+    emit_state_entered(StringName("move"), payload)
 
 func physics_update(delta: float) -> void:
     if controller == null or movement_config == null:
@@ -10,14 +10,14 @@ func physics_update(delta: float) -> void:
     if is_platformer():
         controller.move_platformer_horizontal(input_vector.x, delta, false)
         if controller.consume_jump_request():
-            machine.transition_to(StringName("jump"))
+            safe_transition_to(StringName("jump"), {}, StringName("jump_requested"))
             return
         if not controller.is_on_floor():
-            machine.transition_to(StringName("fall"))
+            safe_transition_to(StringName("fall"), {}, StringName("not_on_floor"))
             return
         if is_equal_approx(input_vector.x, 0.0):
-            machine.transition_to(StringName("idle"))
+            safe_transition_to(StringName("idle"), {}, StringName("no_input"))
     else:
         controller.move_top_down(input_vector, delta)
         if input_vector.length_squared() == 0.0:
-            machine.transition_to(StringName("idle"))
+            safe_transition_to(StringName("idle"), {}, StringName("no_input"))

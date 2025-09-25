@@ -15,8 +15,13 @@ var _path_update_timer: float = 0.0
 
 func setup(state_machine: StateMachine, state_owner: Node, state_context: Dictionary[StringName, Variant]) -> void:
     super.setup(state_machine, state_owner, state_context)
-    _enemy = state_context[&"enemy"]
-    _config = state_context[&"config"]
+    
+    # Validate required context keys
+    if not validate_context([&"enemy", &"config"]):
+        return
+    
+    _enemy = get_context_value(&"enemy", null, TYPE_OBJECT) as EnemyBase
+    _config = get_context_value(&"config", null, TYPE_OBJECT) as EnemyConfig
 
 func enter(payload: Dictionary[StringName, Variant] = {}) -> void:
     _chase_timer = 0.0
@@ -26,7 +31,7 @@ func enter(payload: Dictionary[StringName, Variant] = {}) -> void:
         _last_known_target_position = _enemy.get_alert_target().global_position
     else:
         # No target, return to patrol
-        machine.transition_to(&"patrol", {&"reason": &"no_target"})
+        safe_transition_to(&"patrol", {}, &"no_target")
 
     # Emit event
     emit_event(&"chase_started", {
@@ -39,17 +44,17 @@ func update(delta: float) -> void:
 
     # Check if we should give up chasing
     if _chase_timer >= _max_chase_time:
-        machine.transition_to(&"patrol", {&"reason": &"timeout"})
+        safe_transition_to(&"patrol", {}, &"timeout")
         return
 
     # Check if we lost the target
     if not _enemy.is_alerted():
-        machine.transition_to(&"patrol", {&"reason": &"lost_target"})
+        safe_transition_to(&"patrol", {}, &"lost_target")
         return
 
     var target = _enemy.get_alert_target()
     if not target:
-        machine.transition_to(&"patrol", {&"reason": &"no_target"})
+        safe_transition_to(&"patrol", {}, &"no_target")
         return
 
     # Update last known position
@@ -57,7 +62,7 @@ func update(delta: float) -> void:
 
     # Check if in attack range
     if _enemy.can_attack_target(target):
-        machine.transition_to(&"attack", {&"target": target})
+        safe_transition_to(&"attack", {&"target": target}, &"in_range")
         return
 
     # Move toward target
@@ -77,7 +82,7 @@ func physics_update(delta: float) -> void:
 func handle_event(event: StringName, _data: Variant = null) -> void:
     match event:
         &"target_lost":
-            machine.transition_to(&"investigate", {&"last_position": _last_known_target_position})
+            safe_transition_to(&"investigate", {&"last_position": _last_known_target_position}, &"target_lost")
         &"damaged":
             # Increase priority when damaged
             _chase_timer = 0.0  # Reset timeout
