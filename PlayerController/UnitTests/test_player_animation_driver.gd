@@ -125,4 +125,3 @@ func test_fallback_uses_animated_sprite_when_player_missing_animation() -> void:
     controller.floor_override = false
     _step_controller(20)
     assert_true(animated_sprite.played.has(StringName("fall_anim")))
-*** End Patch
