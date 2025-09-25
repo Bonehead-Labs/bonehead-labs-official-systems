@@ -43,7 +43,7 @@ func test_all_hardcoded_topics_are_defined() -> void:
 	# Check that all hardcoded topics are defined in EventTopics
 	for topic_string in hardcoded_topics:
 		var topic = StringName(topic_string)
-		assert_true(EventTopics.is_valid(topic), "Topic '%s' should be defined in EventTopics.gd" % topic_string)
+		assert_true(_EventTopics.is_valid(topic), "Topic '%s' should be defined in EventTopics.gd" % topic_string)
 
 func test_event_topics_constants_exist() -> void:
 	"""Test that all EventTopics constants are properly defined."""
@@ -180,4 +180,4 @@ func test_no_duplicate_topics() -> void:
 		if topic_counts[topic] > 1:
 			duplicates.append(topic)
 	
-	assert_eq(duplicates.size(), 0, "No duplicate topics should exist in ALL array. Found: " + str(duplicates))
+	assert_eq(duplicates.size(), 0, "No duplicate topics should exist in ALL array. Found: %s" % duplicates)

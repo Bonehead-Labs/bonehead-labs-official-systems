@@ -9,7 +9,7 @@ var strict_mode: bool = false
 func _validate_topic(topic: StringName) -> bool:
 	if not strict_mode:
 		return true
-	if not EventTopics.is_valid(topic):
+	if not _EventTopics.is_valid(topic):
 		push_error("EventBus: invalid topic '%s'" % [topic])
 		return false
 	return true

@@ -164,4 +164,3 @@ func _play_animation(animation_name: StringName) -> void:
             push_warning("AnimatedSprite2D missing animation '%s'" % animation_name)
     if not played and fallback_animation != StringName() and animation_name != fallback_animation:
         _play_animation(fallback_animation)
-*** End Patch

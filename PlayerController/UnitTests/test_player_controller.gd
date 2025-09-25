@@ -80,12 +80,17 @@ func test_top_down_movement_uses_move_state_and_diagonal_velocity() -> void:
     _physics_steps(4)
     assert_eq(controller.get_current_state(), StringName("idle"))
 
+var _spawn_signal_called: bool = false
+
 func test_spawn_emits_signal() -> void:
-    var called := false
-    controller.player_spawned.connect(func(_pos: Vector2): called = true)
+    _spawn_signal_called = false
+    controller.player_spawned.connect(_on_player_spawned)
     controller.spawn(Vector2(100, 50))
-    assert_true(called)
+    assert_true(_spawn_signal_called)
     assert_eq(controller.global_position, Vector2(100, 50))
+
+func _on_player_spawned(_pos: Vector2) -> void:
+    _spawn_signal_called = true
 
 func test_eventbus_input_handling() -> void:
     """Test that PlayerController responds to EventBus input events."""

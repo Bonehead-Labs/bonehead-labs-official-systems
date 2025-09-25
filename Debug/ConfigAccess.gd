@@ -20,7 +20,7 @@ signal config_saved(config: Dictionary)
 signal authentication_succeeded(user: String)
 signal authentication_failed(user: String, reason: String)
 signal access_denied(feature: String, required_level: int, current_level: int)
-signal security_violation_attempted(action: String, details: Dictionary)
+# signal security_violation_attempted(action: String, details: Dictionary)  # TODO: Implement security violation detection
 
 func _ready() -> void:
     _load_config()
@@ -94,7 +94,7 @@ func _get_default_config() -> Dictionary:
 func authenticate(user: String, password: String, ip_address: String = "127.0.0.1") -> bool:
     # Check if account is locked out
     if _is_locked_out():
-        authentication_failed.emit(user, "Account locked out until " + str(_lockout_until))
+        authentication_failed.emit(user, "Account locked out until %s" % _lockout_until)
         _log_security_event("authentication_failed", {
             "user": user,
             "reason": "account_locked",

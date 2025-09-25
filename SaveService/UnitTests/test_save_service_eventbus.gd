@@ -8,7 +8,7 @@ var event_bus: _EventBus
 var mock_saveable: MockSaveable
 
 class MockSaveable extends RefCounted:
-	implements _ISaveable
+	# Implements _ISaveable interface
 	
 	var save_id: String = "test_saveable"
 	var save_priority: int = 10
@@ -170,13 +170,13 @@ func test_auto_save_publishes_events() -> void:
 	var save_request_events = event_bus._events.filter(
 		func(e): return e.topic == EventTopics.SAVE_REQUEST
 	)
-	assert_ge(save_request_events.size(), 1, "Should publish at least one SAVE_REQUEST event from auto-save")
+	assert_true(save_request_events.size() >= 1, "Should publish at least one SAVE_REQUEST event from auto-save")
 	
 	# Check for SAVE_COMPLETED event
 	var save_completed_events = event_bus._events.filter(
 		func(e): return e.topic == EventTopics.SAVE_COMPLETED
 	)
-	assert_ge(save_completed_events.size(), 1, "Should publish at least one SAVE_COMPLETED event from auto-save")
+	assert_true(save_completed_events.size() >= 1, "Should publish at least one SAVE_COMPLETED event from auto-save")
 	
 	# Disable auto-save
 	save_service.enable_auto_save(false)
