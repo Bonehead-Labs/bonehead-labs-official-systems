@@ -99,7 +99,7 @@ func _ready() -> void:
     _apply_all_bus_volumes()
     _apply_all_bus_mutes()
     _update_process_policy()
-    if Engine.is_editor_hint() == false:
+    if not Engine.is_editor_hint():
         SaveService.register_saveable(self)
     # Ensure we start processing for ducking/mix updates
     set_process(true)
@@ -124,7 +124,8 @@ func _ensure_bus(bus_name: StringName) -> void:
     _bus_index[bus_name] = AudioServer.get_bus_index(bus_name)
 
 func _init_bus_state_defaults() -> void:
-    for b in [BUS_MASTER, BUS_MUSIC, BUS_SFX, BUS_UI]:
+    const buses := [BUS_MASTER, BUS_MUSIC, BUS_SFX, BUS_UI]
+    for b in buses:
         if not _bus_base_volume_db.has(b):
             var i := AudioServer.get_bus_index(b)
             _bus_base_volume_db[b] = AudioServer.get_bus_volume_db(i) if i >= 0 else 0.0
@@ -134,7 +135,7 @@ func _init_bus_state_defaults() -> void:
         _bus_offset_db[b] = 0.0
 
 func _valid_bus(bus: StringName) -> bool:
-    return _bus_index.has(bus) and int(_bus_index[bus]) >= 0
+    return _bus_index.has(bus) and _bus_index[bus] >= 0
 
 ## Mixer: set a bus volume (dB). Persists via SaveService.
 func set_bus_volume_db(bus: StringName, db: float) -> void:
@@ -147,7 +148,7 @@ func set_bus_volume_db(bus: StringName, db: float) -> void:
 
 ## Mixer: get the stored (base) volume for a bus (dB)
 func get_bus_volume_db(bus: StringName) -> float:
-    return float(_bus_base_volume_db.get(bus, 0.0))
+    return _bus_base_volume_db.get(bus, 0.0)
 
 ## Mixer: set mute for a bus. Persists via SaveService.
 func set_bus_mute(bus: StringName, mute: bool) -> void:
@@ -160,22 +161,22 @@ func set_bus_mute(bus: StringName, mute: bool) -> void:
 
 ## Mixer: get mute state for a bus
 func is_bus_mute(bus: StringName) -> bool:
-    return bool(_bus_mute.get(bus, false))
+    return _bus_mute.get(bus, false)
 
 func _apply_bus_volume(bus: StringName) -> void:
     if not _valid_bus(bus):
         return
-    var base_db: float = float(_bus_base_volume_db.get(bus, 0.0))
-    var offset_db: float = float(_bus_offset_db.get(bus, 0.0))
+    var base_db: float = _bus_base_volume_db.get(bus, 0.0)
+    var offset_db: float = _bus_offset_db.get(bus, 0.0)
     AudioServer.set_bus_volume_db(_bus_index[bus], base_db + offset_db)
 
 func _apply_all_bus_volumes() -> void:
-    for b in _bus_index.keys():
-        _apply_bus_volume(b)
+    for bus in _bus_index.keys():
+        _apply_bus_volume(bus)
 
 func _apply_all_bus_mutes() -> void:
-    for b in _bus_index.keys():
-        AudioServer.set_bus_mute(_bus_index[b], bool(_bus_mute.get(b, false)))
+    for bus in _bus_index.keys():
+        AudioServer.set_bus_mute(_bus_index[bus], _bus_mute.get(bus, false))
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Sound Library
@@ -190,7 +191,7 @@ func _apply_all_bus_mutes() -> void:
 ##   kind: optional tag (e.g., "SFX" | "UI" | "MUSIC")
 ##   meta: arbitrary developer metadata stored with the entry
 func register_sound(id: StringName, stream_or_def, bus: StringName = BUS_SFX, kind: String = "SFX", meta: Dictionary = {}) -> void:
-    var entry := {}
+    var entry: Dictionary
     if typeof(stream_or_def) == TYPE_DICTIONARY:
         entry = stream_or_def.duplicate(true)
         if not entry.has("stream"):
@@ -204,10 +205,9 @@ func register_sound(id: StringName, stream_or_def, bus: StringName = BUS_SFX, ki
     _library[String(id)] = entry
 
 ## Bulk register sounds: defs is Dictionary[id] = stream or def-dict
-## Bulk register sounds: defs is Dictionary[id] = stream or def-dict
 func register_sounds(defs: Dictionary) -> void:
-    for k in defs.keys():
-        register_sound(StringName(k), defs[k])
+    for key in defs.keys():
+        register_sound(StringName(key), defs[key])
 
 ## Check if a sound id is registered
 func has_sound(id: StringName) -> bool:
@@ -301,8 +301,9 @@ func _on_player_2d_finished(p: AudioStreamPlayer2D) -> void:
     p.pitch_scale = 1.0
     p.volume_db = 0.0
     p.position = Vector2.ZERO
-    if p.get_parent() != _pool_root_2d:
-        p.get_parent().remove_child(p)
+    var parent := p.get_parent()
+    if parent != _pool_root_2d:
+        parent.remove_child(p)
         _pool_root_2d.add_child(p)
     _pool_2d_free.append(p)
 
@@ -311,8 +312,9 @@ func _on_player_3d_finished(p: AudioStreamPlayer3D) -> void:
     p.pitch_scale = 1.0
     p.volume_db = 0.0
     p.transform.origin = Vector3.ZERO
-    if p.get_parent() != _pool_root_3d:
-        p.get_parent().remove_child(p)
+    var parent := p.get_parent()
+    if parent != _pool_root_3d:
+        parent.remove_child(p)
         _pool_root_3d.add_child(p)
     _pool_3d_free.append(p)
 
@@ -320,8 +322,9 @@ func _on_player_ui_finished(p: AudioStreamPlayer) -> void:
     p.stream = null
     p.pitch_scale = 1.0
     p.volume_db = 0.0
-    if p.get_parent() != _pool_root_ui:
-        p.get_parent().remove_child(p)
+    var parent := p.get_parent()
+    if parent != _pool_root_ui:
+        parent.remove_child(p)
         _pool_root_ui.add_child(p)
     _pool_ui_free.append(p)
 
@@ -346,14 +349,15 @@ func play_sfx(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer2D:
     var p := _get_free_2d()
     p.bus = String(def.get("bus", BUS_SFX))
     p.stream = stream
-    p.volume_db = float(options.get("vol_db", 0.0))
-    p.pitch_scale = float(options.get("pitch", 1.0))
+    p.volume_db = options.get("vol_db", 0.0)
+    p.pitch_scale = options.get("pitch", 1.0)
     if options.has("pos"):
         p.position = options["pos"]
     var parent: Node = options.get("parent", _pool_root_2d)
-    if p.get_parent() != parent:
-        if p.get_parent() != null:
-            p.get_parent().remove_child(p)
+    var current_parent := p.get_parent()
+    if current_parent != parent:
+        if current_parent != null:
+            current_parent.remove_child(p)
         parent.add_child(p)
     p.play()
     if duck_enabled:
@@ -378,16 +382,17 @@ func play_sfx_3d(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer3
     var p := _get_free_3d()
     p.bus = String(def.get("bus", BUS_SFX))
     p.stream = stream
-    p.volume_db = float(options.get("vol_db", 0.0))
-    p.pitch_scale = float(options.get("pitch", 1.0))
+    p.volume_db = options.get("vol_db", 0.0)
+    p.pitch_scale = options.get("pitch", 1.0)
     if options.has("pos"):
         var xform := p.transform
         xform.origin = options["pos"]
         p.transform = xform
     var parent: Node = options.get("parent", _pool_root_3d)
-    if p.get_parent() != parent:
-        if p.get_parent() != null:
-            p.get_parent().remove_child(p)
+    var current_parent := p.get_parent()
+    if current_parent != parent:
+        if current_parent != null:
+            current_parent.remove_child(p)
         parent.add_child(p)
     p.play()
     if duck_enabled:
@@ -410,8 +415,8 @@ func play_ui(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer:
     var p := _get_free_ui()
     p.bus = String(def.get("bus", BUS_UI))
     p.stream = stream
-    p.volume_db = float(options.get("vol_db", 0.0))
-    p.pitch_scale = float(options.get("pitch", 1.0))
+    p.volume_db = options.get("vol_db", 0.0)
+    p.pitch_scale = options.get("pitch", 1.0)
     p.play()
     if duck_enabled:
         _request_duck()
@@ -419,18 +424,18 @@ func play_ui(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer:
     return p
 
 func play_at_node2d(id: StringName, node: Node2D, options: Dictionary = {}) -> AudioStreamPlayer2D:
-    options = options.duplicate()
+    var new_options := options.duplicate()
     # Shortcut: plays attached to a Node2D at its global position
-    options["parent"] = node
-    options["pos"] = node.global_position
-    return play_sfx(id, options)
+    new_options["parent"] = node
+    new_options["pos"] = node.global_position
+    return play_sfx(id, new_options)
 
 func play_at_node3d(id: StringName, node: Node3D, options: Dictionary = {}) -> AudioStreamPlayer3D:
-    options = options.duplicate()
+    var new_options := options.duplicate()
     # Shortcut: plays attached to a Node3D at its global origin
-    options["parent"] = node
-    options["pos"] = node.global_transform.origin
-    return play_sfx_3d(id, options)
+    new_options["parent"] = node
+    new_options["pos"] = node.global_transform.origin
+    return play_sfx_3d(id, new_options)
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Music Player & Crossfade
@@ -547,11 +552,7 @@ func _update_ducking(delta: float) -> void:
         _duck_current_db = 0.0
         return
     var now := Time.get_ticks_msec()
-    var want := 0.0
-    if now <= _duck_hold_until_ms:
-        want = duck_amount_db
-    else:
-        want = 0.0
+    var want := duck_amount_db if now <= _duck_hold_until_ms else 0.0
     var rate := duck_attack_s if want < _duck_current_db else duck_release_s
     rate = max(rate, 0.0001)
     var t: float = clampf(delta / rate, 0.0, 1.0)
@@ -600,16 +601,16 @@ func _notification(what: int) -> void:
             _focus_active = false
 
 func play_at_position2d(id: StringName, pos: Vector2, options: Dictionary = {}) -> AudioStreamPlayer2D:
-    options = options.duplicate()
+    var new_options := options.duplicate()
     # Shortcut: plays at a specific 2D position using the pool root as parent
-    options["pos"] = pos
-    return play_sfx(id, options)
+    new_options["pos"] = pos
+    return play_sfx(id, new_options)
 
 func play_at_position3d(id: StringName, pos: Vector3, options: Dictionary = {}) -> AudioStreamPlayer3D:
-    options = options.duplicate()
+    var new_options := options.duplicate()
     # Shortcut: plays at a specific 3D position using the pool root as parent
-    options["pos"] = pos
-    return play_sfx_3d(id, options)
+    new_options["pos"] = pos
+    return play_sfx_3d(id, new_options)
 
 # ───────────────────────────────────────────────────────────────────────────────
 # SaveService interface
@@ -618,9 +619,10 @@ func play_at_position3d(id: StringName, pos: Vector3, options: Dictionary = {}) 
 func save_data() -> Dictionary:
     var vols := {}
     var mutes := {}
-    for b in [BUS_MASTER, BUS_MUSIC, BUS_SFX, BUS_UI]:
-        vols[b] = float(_bus_base_volume_db.get(b, 0.0))
-        mutes[b] = bool(_bus_mute.get(b, false))
+    const buses := [BUS_MASTER, BUS_MUSIC, BUS_SFX, BUS_UI]
+    for b in buses:
+        vols[b] = _bus_base_volume_db.get(b, 0.0)
+        mutes[b] = _bus_mute.get(b, false)
     return {
         "volumes": vols,
         "mutes": mutes
@@ -630,11 +632,11 @@ func load_data(data: Dictionary) -> bool:
     if data.has("volumes"):
         var vols: Dictionary = data.volumes
         for b in vols.keys():
-            set_bus_volume_db(StringName(b), float(vols[b]))
+            set_bus_volume_db(StringName(b), vols[b])
     if data.has("mutes"):
         var mutes: Dictionary = data.mutes
         for b in mutes.keys():
-            set_bus_mute(StringName(b), bool(mutes[b]))
+            set_bus_mute(StringName(b), mutes[b])
     return true
 
 func get_save_id() -> String:
