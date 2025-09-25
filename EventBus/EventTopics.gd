@@ -81,6 +81,9 @@ const ENEMY_SPAWNED           : StringName = &"enemy/spawned"            # {enem
 const ENEMY_ALERTED           : StringName = &"enemy/alerted"            # {enemy_type, enemy_name, faction, target, position, timestamp_ms}
 const ENEMY_DEFEATED          : StringName = &"enemy/defeated"           # {enemy_type, enemy_name, faction, cause, damage_source, final_health, position, timestamp_ms}
 const ENEMY_STATE_CHANGED     : StringName = &"enemy/state_changed"      # {enemy_type, enemy_name, faction, old_state, new_state, timestamp_ms}
+const ENEMY_SPAWNED_FROM_SPAWNER : StringName = &"enemy/spawned_from_spawner" # {spawner, enemy_type, position}
+const ENEMY_ATTACK_START      : StringName = &"enemy/attack_start"       # {enemy, attack_type}
+const ENEMY_ATTACK_END        : StringName = &"enemy/attack_end"         # {enemy, attack_type}
 
 # ───────────────────────────────────────────────────────────────────────────────
 # ENEMY (spawn, perception, death)
@@ -138,6 +141,8 @@ const ITEMS_CRAFT_REQUEST     : StringName = &"items/craft_request"      # {reci
 const ITEMS_CRAFTED           : StringName = &"items/crafted"            # {item_id, qty}
 const ITEMS_CONSUMED          : StringName = &"items/consumed"           # {item_id, qty, owner?}
 const ITEMS_HOTBAR_CHANGED    : StringName = &"items/hotbar_changed"     # {index, item_id?}
+const ITEMS_PICKED_UP         : StringName = &"item/picked_up"           # {item_id, quantity, by}
+const SHOP_PURCHASED          : StringName = &"shop/purchased"           # {buyer, item_id, price}
 
 # ───────────────────────────────────────────────────────────────────────────────
 # AUDIO (music, SFX, volume)
@@ -161,6 +166,28 @@ const WORLD_HAZARD_TRIGGERED  : StringName = &"world/hazard_triggered"   # {id, 
 const WORLD_CHECKPOINT_SET    : StringName = &"world/checkpoint_set"     # {id, pos}
 const WORLD_TIME_OF_DAY       : StringName = &"world/time_of_day"        # {phase}
 const WORLD_WEATHER_CHANGED   : StringName = &"world/weather_changed"    # {from, to}
+const WORLD_PORTAL_USED       : StringName = &"world/portal_used"        # {portal, body, target_scene, target_spawn}
+const WORLD_TIME_PAUSED       : StringName = &"world/time_paused"        # {}
+const WORLD_TIME_RESUMED      : StringName = &"world/time_resumed"       # {}
+const WORLD_TIME_SCALE_CHANGED : StringName = &"world/time_scale_changed" # {scale}
+const WORLD_PROP_DAMAGED      : StringName = &"world/prop_damaged"       # {prop, amount, source?}
+const WORLD_PROP_DESTROYED    : StringName = &"world/prop_destroyed"     # {prop, source?}
+const WORLD_PROP_RESPAWNED    : StringName = &"world/prop_respawned"     # {prop}
+const WORLD_HAZARD_ENTERED    : StringName = &"world/hazard_entered"     # {hazard, body}
+const WORLD_HAZARD_EXITED     : StringName = &"world/hazard_exited"      # {hazard, body}
+const WORLD_HAZARD_DAMAGE     : StringName = &"world/hazard_damage"      # {hazard, body, amount}
+const WORLD_LEVEL_LOAD_STARTED : StringName = &"world/level_load_started" # {scene_path, payload_keys}
+const WORLD_LEVEL_LOAD_FAILED : StringName = &"world/level_load_failed"  # {scene_path, reason}
+const WORLD_LEVEL_LOAD_SUCCESS : StringName = &"world/level_load_success" # {scene_path, payload_keys}
+const WORLD_LEVEL_PUSH_STARTED : StringName = &"world/level_push_started" # {scene_path, payload_keys}
+const WORLD_LEVEL_PUSH_FAILED : StringName = &"world/level_push_failed"  # {scene_path, reason}
+const WORLD_LEVEL_PUSH_SUCCESS : StringName = &"world/level_push_success" # {scene_path, payload_keys}
+const WORLD_LEVEL_POP_STARTED : StringName = &"world/level_pop_started"  # {}
+const WORLD_LEVEL_POP_FAILED  : StringName = &"world/level_pop_failed"   # {reason}
+const WORLD_LEVEL_POP_SUCCESS : StringName = &"world/level_pop_success"  # {}
+const WORLD_CHECKPOINT_REGISTERED : StringName = &"world/checkpoint_registered" # {checkpoint}
+const WORLD_CHECKPOINT_ACTIVATED : StringName = &"world/checkpoint_activated" # {checkpoint}
+const WORLD_INTERACTED        : StringName = &"world/interacted"         # {interactable, interactor}
 
 # ───────────────────────────────────────────────────────────────────────────────
 # DEBUG (dev-only: logging, metrics)
@@ -169,6 +196,9 @@ const DEBUG_LOG               : StringName = &"debug/log"                # {msg,
 const DEBUG_METRIC            : StringName = &"debug/metric"             # {name, value, tags?}
 const DEBUG_WATCH_TOPIC       : StringName = &"debug/watch_topic"        # {topic, on:bool}
 const DEBUG_LISTENERS_DUMP    : StringName = &"debug/listeners_dump"     # {}
+const DEBUG_CRASH_DETECTED    : StringName = &"debug/crash_detected"     # {error, scene, stack}
+const DEBUG_WARNING           : StringName = &"debug/warning"            # {msg, source?}
+const DEBUG_ERROR             : StringName = &"debug/error"              # {msg, source?}
 
 # ───────────────────────────────────────────────────────────────────────────────
 # Optional: registry for validation / tooling in dev builds
@@ -200,6 +230,7 @@ static var ALL : Array[StringName] = [
     ENEMY_SPAWNED, ENEMY_ALERTED, ENEMY_DEFEATED, ENEMY_STATE_CHANGED,
     ENEMY_DESPAWNED, ENEMY_PERCEIVED_PLAYER, ENEMY_LOST_PLAYER,
     ENEMY_DAMAGED, ENEMY_DIED, ENEMY_ATTACK_STARTED, ENEMY_ATTACK_LANDED,
+    ENEMY_SPAWNED_FROM_SPAWNER, ENEMY_ATTACK_START, ENEMY_ATTACK_END,
 
     # combat
     COMBAT_HIT, COMBAT_BLOCKED, COMBAT_PARRIED, COMBAT_HEAL, COMBAT_KNOCKBACK,
@@ -217,7 +248,7 @@ static var ALL : Array[StringName] = [
 
     # items
     ITEMS_ADDED, ITEMS_REMOVED, ITEMS_EQUIPPED, ITEMS_UNEQUIPPED, ITEMS_CRAFT_REQUEST,
-    ITEMS_CRAFTED, ITEMS_CONSUMED, ITEMS_HOTBAR_CHANGED,
+    ITEMS_CRAFTED, ITEMS_CONSUMED, ITEMS_HOTBAR_CHANGED, ITEMS_PICKED_UP, SHOP_PURCHASED,
 
     # audio
     AUDIO_MUSIC_PLAY, AUDIO_MUSIC_STOP, AUDIO_MUSIC_FADE, AUDIO_SFX_PLAY,
@@ -226,10 +257,17 @@ static var ALL : Array[StringName] = [
     # world
     WORLD_INTERACT, WORLD_LEVER_TOGGLED, WORLD_BUTTON_PRESSED, WORLD_DOOR_OPENED,
     WORLD_DOOR_CLOSED, WORLD_HAZARD_TRIGGERED, WORLD_CHECKPOINT_SET, WORLD_TIME_OF_DAY,
-    WORLD_WEATHER_CHANGED,
+    WORLD_WEATHER_CHANGED, WORLD_PORTAL_USED, WORLD_TIME_PAUSED, WORLD_TIME_RESUMED,
+    WORLD_TIME_SCALE_CHANGED, WORLD_PROP_DAMAGED, WORLD_PROP_DESTROYED, WORLD_PROP_RESPAWNED,
+    WORLD_HAZARD_ENTERED, WORLD_HAZARD_EXITED, WORLD_HAZARD_DAMAGE, WORLD_LEVEL_LOAD_STARTED,
+    WORLD_LEVEL_LOAD_FAILED, WORLD_LEVEL_LOAD_SUCCESS, WORLD_LEVEL_PUSH_STARTED,
+    WORLD_LEVEL_PUSH_FAILED, WORLD_LEVEL_PUSH_SUCCESS, WORLD_LEVEL_POP_STARTED,
+    WORLD_LEVEL_POP_FAILED, WORLD_LEVEL_POP_SUCCESS, WORLD_CHECKPOINT_REGISTERED,
+    WORLD_CHECKPOINT_ACTIVATED, WORLD_INTERACTED,
 
     # debug
-    DEBUG_LOG, DEBUG_METRIC, DEBUG_WATCH_TOPIC, DEBUG_LISTENERS_DUMP
+    DEBUG_LOG, DEBUG_METRIC, DEBUG_WATCH_TOPIC, DEBUG_LISTENERS_DUMP,
+    DEBUG_CRASH_DETECTED, DEBUG_WARNING, DEBUG_ERROR
 ]
 
 static func is_valid(topic: StringName) -> bool:

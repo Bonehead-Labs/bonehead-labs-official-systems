@@ -331,11 +331,30 @@ func save_game(save_id: String = "main") -> bool:
 		return false
 	
 	_is_saving = true
+	
+	# EventBus integration - publish save request
+	if Engine.has_singleton("EventBus"):
+		EventBus.pub(EventTopics.SAVE_REQUEST, {
+			"slot": save_id,
+			"profile": current_profile_id,
+			"reason": "manual"
+		})
+	
 	emit_signal("before_save", save_id)
 	
 	var success := _perform_save(save_id)
 	
 	_is_saving = false
+	
+	# EventBus integration - publish save completion
+	if Engine.has_singleton("EventBus"):
+		EventBus.pub(EventTopics.SAVE_COMPLETED, {
+			"slot": save_id,
+			"profile": current_profile_id,
+			"ok": success,
+			"reason": "manual"
+		})
+	
 	emit_signal("after_save", save_id, success)
 	return success
 
@@ -400,11 +419,30 @@ func load_game(save_id: String = "main") -> bool:
 		return false
 	
 	_is_loading = true
+	
+	# EventBus integration - publish load request
+	if Engine.has_singleton("EventBus"):
+		EventBus.pub(EventTopics.LOAD_REQUEST, {
+			"slot": save_id,
+			"profile": current_profile_id,
+			"reason": "manual"
+		})
+	
 	emit_signal("before_load", save_id)
 	
 	var success := _perform_load(save_id)
 	
 	_is_loading = false
+	
+	# EventBus integration - publish load completion
+	if Engine.has_singleton("EventBus"):
+		EventBus.pub(EventTopics.LOAD_COMPLETED, {
+			"slot": save_id,
+			"profile": current_profile_id,
+			"ok": success,
+			"reason": "manual"
+		})
+	
 	emit_signal("after_load", save_id, success)
 	return success
 
@@ -497,6 +535,14 @@ func create_checkpoint(checkpoint_name: String = "") -> bool:
 	# Ensure checkpoint directory exists
 	DirAccess.make_dir_recursive_absolute(checkpoint_dir)
 	
+	# EventBus integration - publish checkpoint save request
+	if Engine.has_singleton("EventBus"):
+		EventBus.pub(EventTopics.SAVE_REQUEST, {
+			"slot": checkpoint_name,
+			"profile": current_profile_id,
+			"reason": "checkpoint"
+		})
+	
 	# Save checkpoint
 	var save_data := _serialize_saveables()
 	var file := FileAccess.open(checkpoint_path, FileAccess.WRITE)
@@ -509,6 +555,15 @@ func create_checkpoint(checkpoint_name: String = "") -> bool:
 	
 	# Clean up old checkpoints
 	_cleanup_old_checkpoints()
+	
+	# EventBus integration - publish checkpoint completion
+	if Engine.has_singleton("EventBus"):
+		EventBus.pub(EventTopics.SAVE_COMPLETED, {
+			"slot": checkpoint_name,
+			"profile": current_profile_id,
+			"ok": true,
+			"reason": "checkpoint"
+		})
 	
 	emit_signal("checkpoint_created", checkpoint_name)
 	return true
