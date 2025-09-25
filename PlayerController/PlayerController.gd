@@ -11,9 +11,8 @@ signal state_event(event: StringName, data: Variant)
 signal interaction_available_changed(available: bool)
 signal ability_registered(ability_id: StringName, ability: Node)
 signal ability_unregistered(ability_id: StringName)
-signal player_damaged(amount: float, source: Node, remaining_health: float)
-signal player_healed(amount: float, source: Node, new_health: float)
-signal player_died(source: Node)
+# Health signals removed - use EventBus topics instead:
+# EventTopics.PLAYER_DAMAGED, EventTopics.PLAYER_HEALED, EventTopics.PLAYER_DIED
 
 const EventTopics = preload("res://EventBus/EventTopics.gd")
 const MovementConfigScript = preload("res://PlayerController/MovementConfig.gd")
@@ -57,6 +56,8 @@ func _ready() -> void:
     _setup_health_component()
     _setup_interaction_detector()
     _connect_input_service()
+    _connect_eventbus_input()
+    _connect_eventbus_health()
     _was_on_floor = is_on_floor()
 
 func _process(delta: float) -> void:
@@ -188,6 +189,8 @@ func get_motion_velocity() -> Vector2:
 
 func _exit_tree() -> void:
     _disconnect_input_service()
+    _disconnect_eventbus_input()
+    _disconnect_eventbus_health()
 
 func _setup_health_component() -> void:
     _health_component = HealthComponentScript.new()
@@ -196,11 +199,7 @@ func _setup_health_component() -> void:
     _health_component.auto_register_with_save_service = false  # We'll handle save registration
     add_child(_health_component)
 
-    # Connect health component signals to forward them
-    _health_component.damaged.connect(_on_health_component_damaged)
-    _health_component.healed.connect(_on_health_component_healed)
-    _health_component.died.connect(_on_health_component_died)
-    _health_component.health_changed.connect(_on_health_component_health_changed)
+    # HealthComponent already publishes to EventBus - no need for signal forwarding
 
 func _setup_interaction_detector() -> void:
     if not enable_interaction_detector or Engine.is_editor_hint():
@@ -224,19 +223,8 @@ func interact() -> void:
 func _on_interaction_available_changed(available: bool) -> void:
     interaction_available_changed.emit(available)
 
-# Health Component Signal Forwarding
-func _on_health_component_damaged(amount: float, source: Node, damage_info: DamageInfoScript) -> void:
-    player_damaged.emit(amount, source, _health_component.get_health())
-
-func _on_health_component_healed(amount: float, source: Node, damage_info: DamageInfoScript) -> void:
-    player_healed.emit(amount, source, _health_component.get_health())
-
-func _on_health_component_died(source: Node, damage_info: DamageInfoScript) -> void:
-    player_died.emit(source)
-
-func _on_health_component_health_changed(old_health: float, new_health: float) -> void:
-    # Could emit additional signals if needed
-    pass
+# Health signal forwarding removed - use EventBus topics instead:
+# Subscribe to EventTopics.PLAYER_DAMAGED, EventTopics.PLAYER_HEALED, EventTopics.PLAYER_DIED
 
 func register_ability(ability_id: StringName, ability: Node) -> void:
     if _abilities.has(ability_id):
@@ -494,29 +482,19 @@ func _refresh_state_context() -> void:
 func _sample_input() -> Vector2:
     if movement_config == null:
         return Vector2.ZERO
+    
+    # Use EventBus-based input from InputService (no more manual polling)
     if _input_service_connected and Engine.has_singleton("InputService"):
         var x: float = clamp(_axis_values.get(StringName("move_x"), 0.0), -1.0, 1.0)
         var y: float = clamp(_axis_values.get(StringName("move_y"), 0.0), -1.0, 1.0)
         if not movement_config.allow_vertical_input:
             y = 0.0
         return Vector2(x, y)
-    if movement_config.use_axis_input:
-        var horizontal := Input.get_axis(movement_config.axis_negative_action, movement_config.axis_positive_action)
-        var vertical := Input.get_axis(movement_config.axis_vertical_negative_action, movement_config.axis_vertical_positive_action)
-        if not movement_config.allow_vertical_input:
-            vertical = 0.0
-        return Vector2(horizontal, vertical)
-    var input_vector := Vector2.ZERO
-    if Input.is_action_pressed(movement_config.move_left_action):
-        input_vector.x -= 1.0
-    if Input.is_action_pressed(movement_config.move_right_action):
-        input_vector.x += 1.0
-    if movement_config.allow_vertical_input:
-        if Input.is_action_pressed(movement_config.move_up_action):
-            input_vector.y -= 1.0
-        if Input.is_action_pressed(movement_config.move_down_action):
-            input_vector.y += 1.0
-    return input_vector
+    
+    # Fallback: return zero if InputService is not available
+    # This ensures the system degrades gracefully
+    push_warning("PlayerController: InputService not available, input will be zero")
+    return Vector2.ZERO
 
 func _apply_deadzone(input_vector: Vector2) -> Vector2:
     var deadzone: float = movement_config.movement_input_deadzone if movement_config else 0.0
@@ -580,6 +558,58 @@ func _disconnect_input_service() -> void:
             input_service.axis_event.disconnect(_on_axis_event)
     _input_service_connected = false
 
+func _connect_eventbus_input() -> void:
+    """Connect to EventBus input events as primary input source."""
+    if Engine.is_editor_hint():
+        return
+    if Engine.has_singleton("EventBus"):
+        var event_bus := Engine.get_singleton("EventBus") as Object
+        if event_bus and event_bus.has_method("sub"):
+            # Subscribe to input events from EventBus
+            event_bus.call("sub", EventTopics.INPUT_ACTION, _on_eventbus_action)
+            event_bus.call("sub", EventTopics.INPUT_AXIS, _on_eventbus_axis)
+
+func _disconnect_eventbus_input() -> void:
+    """Disconnect from EventBus input events."""
+    if Engine.is_editor_hint():
+        return
+    if Engine.has_singleton("EventBus"):
+        var event_bus := Engine.get_singleton("EventBus") as Object
+        if event_bus and event_bus.has_method("unsub"):
+            event_bus.call("unsub", EventTopics.INPUT_ACTION, _on_eventbus_action)
+            event_bus.call("unsub", EventTopics.INPUT_AXIS, _on_eventbus_axis)
+
+func _on_eventbus_action(payload: Dictionary) -> void:
+    """Handle input action events from EventBus."""
+    var action: StringName = payload.get("action", StringName(""))
+    var edge: String = payload.get("edge", "")
+    var device: int = payload.get("device", 0)
+    
+    # Handle jump input
+    if action == movement_config.jump_action and edge == "pressed":
+        _record_jump_buffer()
+    
+    # Handle interact input
+    if action == movement_config.interact_action and edge == "pressed":
+        interact()
+    
+    # Forward to abilities
+    for ability in _abilities.values():
+        ability.handle_input_action(action, edge, device, null)
+
+func _on_eventbus_axis(payload: Dictionary) -> void:
+    """Handle input axis events from EventBus."""
+    var axis: StringName = payload.get("axis", StringName(""))
+    var value: float = payload.get("value", 0.0)
+    var device: int = payload.get("device", 0)
+    
+    # Store axis value for movement input
+    _axis_values[axis] = clamp(value, -1.0, 1.0)
+    
+    # Forward to abilities
+    for ability in _abilities.values():
+        ability.handle_input_axis(axis, value, device)
+
 func _on_action_event(action: StringName, edge: String, device: int, event: InputEvent) -> void:
     if action == movement_config.jump_action and edge == "pressed":
         _record_jump_buffer()
@@ -631,3 +661,73 @@ func _emit_player_event(topic: StringName, payload: Dictionary[StringName, Varia
     if Engine.has_singleton("EventBus"):
         payload[StringName("timestamp_ms")] = Time.get_ticks_msec()
         Engine.get_singleton("EventBus").call("pub", topic, payload)
+
+func _connect_eventbus_health() -> void:
+    """Connect to EventBus health events for player-specific handling."""
+    if Engine.is_editor_hint():
+        return
+    if Engine.has_singleton("EventBus"):
+        var event_bus := Engine.get_singleton("EventBus") as Object
+        if event_bus and event_bus.has_method("sub"):
+            # Subscribe to combat events for this player
+            event_bus.call("sub", EventTopics.COMBAT_HIT, _on_eventbus_damage)
+            event_bus.call("sub", EventTopics.COMBAT_HEAL, _on_eventbus_heal)
+            event_bus.call("sub", EventTopics.COMBAT_ENTITY_DEATH, _on_eventbus_death)
+
+func _disconnect_eventbus_health() -> void:
+    """Disconnect from EventBus health events."""
+    if Engine.is_editor_hint():
+        return
+    if Engine.has_singleton("EventBus"):
+        var event_bus := Engine.get_singleton("EventBus") as Object
+        if event_bus and event_bus.has_method("unsub"):
+            event_bus.call("unsub", EventTopics.COMBAT_HIT, _on_eventbus_damage)
+            event_bus.call("unsub", EventTopics.COMBAT_HEAL, _on_eventbus_heal)
+            event_bus.call("unsub", EventTopics.COMBAT_ENTITY_DEATH, _on_eventbus_death)
+
+func _on_eventbus_damage(payload: Dictionary) -> void:
+    """Handle damage events from EventBus for this player."""
+    var target = payload.get("target", null)
+    if target != self:
+        return  # Not for this player
+    
+    var amount = payload.get("amount", 0.0)
+    var source = payload.get("source", null)
+    var damage_type = payload.get("type", "unknown")
+    
+    # Emit player-specific event for UI/systems that need it
+    _emit_player_event(EventTopics.PLAYER_DAMAGED, {
+        StringName("amount"): amount,
+        StringName("source"): source,
+        StringName("hp_after"): _health_component.get_health() if _health_component else 0.0,
+        StringName("damage_type"): damage_type
+    } as Dictionary[StringName, Variant])
+
+func _on_eventbus_heal(payload: Dictionary) -> void:
+    """Handle heal events from EventBus for this player."""
+    var target = payload.get("target", null)
+    if target != self:
+        return  # Not for this player
+    
+    var amount = payload.get("amount", 0.0)
+    var source = payload.get("source", null)
+    
+    # Emit player-specific event for UI/systems that need it
+    _emit_player_event(EventTopics.PLAYER_HEALED, {
+        StringName("amount"): amount,
+        StringName("source"): source,
+        StringName("hp_after"): _health_component.get_health() if _health_component else 0.0
+    } as Dictionary[StringName, Variant])
+
+func _on_eventbus_death(payload: Dictionary) -> void:
+    """Handle death events from EventBus for this player."""
+    var target = payload.get("target", null)
+    if target != self:
+        return  # Not for this player
+    
+    var source = payload.get("source", null)
+    
+    # Emit player-specific event for UI/systems that need it
+    _emit_player_event(EventTopics.PLAYER_DIED, {
+        StringName("source"): source
+    } as Dictionary[StringName, Variant])

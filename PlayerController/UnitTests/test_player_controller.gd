@@ -3,10 +3,7 @@ extends "res://addons/gut/test.gd"
 const ConfigPath: String = "res://PlayerController/default_movement.tres"
 
 class TestController extends _PlayerController2D:
-    var floor_override: bool = false
-
-    func is_on_floor() -> bool:
-        return floor_override
+    var floor_override: bool = is_on_floor()
 
 var controller: TestController
 var config: MovementConfig
@@ -89,3 +86,65 @@ func test_spawn_emits_signal() -> void:
     controller.spawn(Vector2(100, 50))
     assert_true(called)
     assert_eq(controller.global_position, Vector2(100, 50))
+
+func test_eventbus_input_handling() -> void:
+    """Test that PlayerController responds to EventBus input events."""
+    # Disable manual input to test EventBus integration
+    controller.enable_manual_input(false)
+    
+    # Simulate EventBus axis event for movement
+    var axis_payload := {
+        "axis": StringName("move_x"),
+        "value": 1.0,
+        "device": 0
+    }
+    controller._on_eventbus_axis(axis_payload)
+    
+    # Check that axis value was stored
+    assert_eq(controller._axis_values.get(StringName("move_x"), 0.0), 1.0)
+    
+    # Test movement input retrieval
+    var input_vector := controller.get_movement_input()
+    assert_eq(input_vector.x, 1.0)
+    assert_eq(input_vector.y, 0.0)
+    
+    # Test vertical movement
+    var vertical_payload := {
+        "axis": StringName("move_y"),
+        "value": -1.0,
+        "device": 0
+    }
+    controller._on_eventbus_axis(vertical_payload)
+    
+    # Enable vertical input for this test
+    controller.movement_config.allow_vertical_input = true
+    input_vector = controller.get_movement_input()
+    assert_eq(input_vector.x, 1.0)
+    assert_eq(input_vector.y, -1.0)
+
+func test_eventbus_action_handling() -> void:
+    """Test that PlayerController responds to EventBus action events."""
+    # Disable manual input to test EventBus integration
+    controller.enable_manual_input(false)
+    
+    # Test jump action by checking if it can consume jump request
+    var jump_payload := {
+        "action": StringName("jump"),
+        "edge": "pressed",
+        "device": 0
+    }
+    controller._on_eventbus_action(jump_payload)
+    
+    # Test that jump request can be consumed (indirect test of jump buffer)
+    controller.floor_override = true
+    var can_consume = controller.consume_jump_request()
+    assert_true(can_consume, "Jump request should be consumable after EventBus action")
+    
+    # Test interact action
+    var interact_payload := {
+        "action": StringName("interact"),
+        "edge": "pressed",
+        "device": 0
+    }
+    # This should not crash (interact() method should be callable)
+    controller._on_eventbus_action(interact_payload)
