@@ -270,5 +270,8 @@ static var ALL : Array[StringName] = [
     DEBUG_CRASH_DETECTED, DEBUG_WARNING, DEBUG_ERROR
 ]
 
+## Validates if a topic is registered in the EventTopics registry
+## @param topic: The topic to validate
+## @return: true if the topic exists in the registry
 static func is_valid(topic: StringName) -> bool:
     return ALL.has(topic)

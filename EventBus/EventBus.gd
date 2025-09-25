@@ -1,11 +1,17 @@
 class_name _EventBus extends Node
 
-var _subs: Dictionary = {} #Dictionary[StringName, Array[Callable]]
+# Event subscription storage: topic -> array of callables
+var _subs: Dictionary = {} # Dictionary[StringName, Array[Callable]]
+# Catch-all subscribers that receive all events
 var _catch_all: Array[Callable] = []
+# If true, events are dispatched on the next frame for safety
 var deferred_mode: bool = false
+# If true, validates topics against EventTopics registry
 var strict_mode: bool = false
 
-# Validate topic before subscribing or publishing
+## Validates topic against EventTopics registry if strict mode is enabled
+## @param topic: The topic to validate
+## @return: true if topic is valid or strict mode is disabled
 func _validate_topic(topic: StringName) -> bool:
 	if not strict_mode:
 		return true
@@ -14,17 +20,21 @@ func _validate_topic(topic: StringName) -> bool:
 		return false
 	return true
 
-# Subscribe to an event
+## Subscribe to a specific event topic
+## @param topic: The event topic to subscribe to
+## @param cb: Callable to invoke when the event is published
 func sub(topic: StringName, cb: Callable) -> void:
 	if not _validate_topic(topic):
 		return
-	var key = StringName(topic)
+	var key := StringName(topic)
 	var arr: Array = _subs.get(key, [])
 	if not arr.has(cb):
 		arr.append(cb)
 	_subs[key] = arr
 
-# Unsubscribe from an event
+## Unsubscribe from a specific event topic
+## @param topic: The event topic to unsubscribe from
+## @param cb: Callable to remove from subscriptions
 func unsub(topic: StringName, cb: Callable) -> void:
 	var key := StringName(topic)
 	if not _subs.has(key):
@@ -33,7 +43,10 @@ func unsub(topic: StringName, cb: Callable) -> void:
 	if _subs[key].is_empty():
 		_subs.erase(key)
 
-# Publish an event
+## Publish an event to all subscribers
+## @param topic: The event topic to publish
+## @param payload: Data to send with the event
+## @param use_envelope: If true, subscribers receive full envelope; if false, just payload
 func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false) -> void:
 	if not _validate_topic(topic):
 		return
@@ -51,30 +64,33 @@ func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false
 	else:
 		_dispatch(key, envelope, listeners, use_envelope)
 
-# Subscribe to all events
+## Subscribe to all events (catch-all subscription)
+## @param cb: Callable to invoke for every published event
 func sub_all(cb: Callable) -> void:
 	if not _catch_all.has(cb):
 		_catch_all.append(cb)
 
-# Unsubscribe from all events
+## Unsubscribe from all events (catch-all subscription)
+## @param cb: Callable to remove from catch-all subscriptions
 func unsub_all(cb: Callable) -> void:
 	_catch_all.erase(cb)
 
-# Dispatch an event to all subscribers
+## Dispatch event to all catch-all subscribers
+## @param envelope: Event envelope containing topic, payload, timestamp, and frame
 func _dispatch_catch_all(envelope: Dictionary) -> void:
 	var pruned := false
 	for cb in _catch_all.duplicate():
 		if cb == null or not cb.is_valid():
 			pruned = true
 			continue
-		var err = cb.call(envelope)
-		if typeof(err) == TYPE_INT and err != OK:
-			push_warning("EventBus: handler error on catch all err %s" % [err])
+		var result: Variant = cb.call(envelope)
+		if typeof(result) == TYPE_INT and result != OK:
+			push_warning("EventBus: handler error on catch all err %s" % [result])
 	
 	if pruned:
 		_cleanup_catch_all_invalid_callables()
 
-# Clean up invalid callables from catch-all subscriptions
+## Clean up invalid callables from catch-all subscriptions
 func _cleanup_catch_all_invalid_callables() -> void:
 	var cleaned := []
 	for c in _catch_all:
@@ -82,27 +98,28 @@ func _cleanup_catch_all_invalid_callables() -> void:
 			cleaned.append(c)
 	_catch_all = cleaned
 
-# Dispatch an event
+## Dispatch event to topic-specific subscribers
+## @param key: The event topic key
+## @param envelope: Event envelope containing topic, payload, timestamp, and frame
+## @param listeners: Array of callables subscribed to this topic
+## @param use_envelope: If true, pass full envelope; if false, pass just payload
 func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_envelope: bool) -> void:
 	var pruned := false
 	for cb in listeners:
 		if cb == null or not cb.is_valid():
 			pruned = true
 			continue
-		var err
-		if use_envelope:
-			err = cb.call(envelope)
-		else:
-			err = cb.call(envelope["payload"])
-		if typeof(err) == TYPE_INT and err != OK:
-			push_warning("EventBus: handler error on topic %s err %s" % [key, err])
+		var result: Variant = cb.call(envelope if use_envelope else envelope["payload"])
+		if typeof(result) == TYPE_INT and result != OK:
+			push_warning("EventBus: handler error on topic %s err %s" % [key, result])
 	
 	_dispatch_catch_all(envelope)  # <- use the helper
 
 	if pruned:
 		_cleanup_invalid_callables(key)
 
-# Clean up invalid callables from a topic's subscription list
+## Clean up invalid callables from a topic's subscription list
+## @param key: The topic key to clean up
 func _cleanup_invalid_callables(key: StringName) -> void:
 	var current: Array = _subs.get(key, [])
 	var cleaned := []
