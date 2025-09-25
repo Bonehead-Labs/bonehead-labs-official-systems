@@ -78,8 +78,8 @@ func take_damage(damage_info: DamageInfoScript) -> bool:
 			if effect:
 				_status_effect_manager.apply_effect(effect)
 
-	# EventBus analytics
-	_emit_damage_event(EventTopics.PLAYER_DAMAGED, actual_damage, damage_info.source, damage_info)
+	# EventBus analytics - use generic combat damage topic
+	_emit_damage_event(EventTopics.COMBAT_HIT, actual_damage, damage_info.source, damage_info)
 
 	# Check for death
 	if _health <= 0.0 and old_health > 0.0:
@@ -104,8 +104,8 @@ func heal(damage_info: DamageInfoScript) -> bool:
 	healed.emit(actual_heal, damage_info.source, damage_info)
 	health_changed.emit(old_health, _health)
 
-	# EventBus analytics
-	_emit_damage_event(EventTopics.PLAYER_HEALED, actual_heal, damage_info.source, damage_info)
+	# EventBus analytics - use generic combat heal topic
+	_emit_damage_event(EventTopics.COMBAT_HEAL, actual_heal, damage_info.source, damage_info)
 
 	return true
 
@@ -181,8 +181,8 @@ func get_invulnerability_time() -> float:
 func _die(source: Node, damage_info: DamageInfoScript) -> void:
 	died.emit(source, damage_info)
 
-	# EventBus analytics
-	_emit_damage_event(EventTopics.PLAYER_DIED, 0.0, source, damage_info)
+	# EventBus analytics - use generic combat death topic
+	_emit_damage_event(EventTopics.COMBAT_ENTITY_DEATH, 0.0, source, damage_info)
 
 	# TODO: Could emit additional events for game over, respawn, etc.
 
@@ -220,12 +220,15 @@ func _create_status_effect_from_name(effect_name: String, metadata: Dictionary) 
 
 func _emit_damage_event(topic: StringName, amount: float, source: Node, damage_info: DamageInfoScript) -> void:
 	if Engine.has_singleton("EventBus"):
+		var entity = get_parent()
 		var payload := {
+			"target": entity,
 			"amount": amount,
-			"hp_after": _health,
-			"source_type": source.get_class() if source else "unknown",
-			"damage_type": DamageInfoScript.DamageType.keys()[damage_info.type],
-			"entity_position": get_parent().global_position if get_parent() else Vector2.ZERO,
+			"source": source,
+			"type": DamageInfoScript.DamageType.keys()[damage_info.type] if damage_info else "unknown",
+			"entity_name": entity.name if entity else "unknown",
+			"entity_type": entity.get_class() if entity else "unknown",
+			"position": entity.global_position if entity else Vector2.ZERO,
 			"timestamp_ms": Time.get_ticks_msec()
 		}
 		Engine.get_singleton("EventBus").call("pub", topic, payload)
