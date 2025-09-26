@@ -37,8 +37,11 @@ This document defines the rules and expectations for AI agents and automated too
    - Explicitly type variables, params, and return values.
 
 6. **Documentation & Readability**
-   - Public APIs: docstrings with purpose, params, returns, signals.
-   - Complex logic: short, actionable comments (focus on “why”).
+   - **Godot Documentation Standards**: All documentation MUST follow official GDScript documentation conventions
+   - **BBCode Formatting**: Use proper BBCode tags for parameters, returns, and cross-references
+   - **Public APIs**: Comprehensive docstrings with purpose, parameters, returns, signals, and usage examples
+   - **Complex logic**: Short, actionable comments focusing on "why" not "what"
+   - **Consistency**: All modules must use identical documentation patterns
 
 7. **Prefer Native Godot Tools**
    - Use scenes, nodes, resources, signals, and built-ins where appropriate.
@@ -188,9 +191,215 @@ This document defines the rules and expectations for AI agents and automated too
 
 ---
 
+## Documentation Standards Enforcement
+
+> **CRITICAL**: All AI agents must strictly follow these documentation patterns. Non-compliant documentation will be rejected.
+
+### Required Documentation Format
+
+#### Function Documentation Structure
+```gdscript
+## Brief description of what the function does
+## 
+## Optional longer description explaining purpose, behavior, or important details
+## 
+## [b]param_name:[/b] Description of the parameter
+## [b]param_name:[/b] Description of the parameter
+## 
+## [b]Returns:[/b] Description of what the function returns
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Example usage code
+## var result = function_name(param1, param2)
+## [/codeblock]
+```
+
+#### Signal Documentation Structure
+```gdscript
+## Emitted when [event description]
+## 
+## [b]param_name:[/b] Description of the signal parameter
+## [b]param_name:[/b] Description of the signal parameter
+signal signal_name(param_name: Type, param_name: Type)
+```
+
+#### Member Variable Documentation
+```gdscript
+## Brief description of the variable's purpose
+## 
+## [b]Default:[/b] Default value or behavior
+var member_name: Type = default_value
+```
+
+### BBCode Tags Reference
+
+#### Required Tags
+- `[b]parameter:[/b]` - For function parameters
+- `[b]Returns:[/b]` - For return value descriptions
+- `[b]Default:[/b] - For default values
+- `[b]Usage:[/b]` - For code examples
+
+#### Cross-Reference Tags
+- `[method function_name]` - Link to another method
+- `[signal signal_name]` - Link to a signal
+- `[member variable_name]` - Link to a member variable
+- `[enum EnumName]` - Link to an enum
+- `[constant CONSTANT_NAME]` - Link to a constant
+
+#### Formatting Tags
+- `[codeblock]` - For multi-line code examples
+- `[br]` - Line breaks within descriptions
+- `[i]text[/i]` - Italic text for emphasis
+- `[b]text[/b]` - Bold text for emphasis
+
+### Forbidden Patterns
+
+#### ❌ NEVER Use These
+```gdscript
+# ❌ BAD - Non-standard parameter format
+## Args:
+##   param: description
+##   param: description
+
+# ❌ BAD - Non-standard return format  
+## @param param description
+## @return return description
+
+# ❌ BAD - Inconsistent formatting
+## Parameters:
+## - param: description
+## - param: description
+```
+
+#### ✅ ALWAYS Use These
+```gdscript
+# ✅ GOOD - Standard BBCode format
+## [b]param:[/b] description
+## [b]param:[/b] description
+## 
+## [b]Returns:[/b] description
+```
+
+### Documentation Coverage Requirements
+
+#### Public Functions (Required)
+- **Purpose**: What the function does
+- **Parameters**: All parameters with types and descriptions
+- **Returns**: Return type and description
+- **Usage**: Code example showing typical usage
+- **Cross-references**: Links to related methods/signals when relevant
+
+#### Signals (Required)
+- **When emitted**: Clear description of trigger conditions
+- **Parameters**: All signal parameters with types and descriptions
+- **Usage**: Example of how to connect and use the signal
+
+#### Member Variables (Required for public/exported)
+- **Purpose**: What the variable represents
+- **Default**: Default value and behavior
+- **Usage**: When and how to modify the variable
+
+#### Private/Internal Functions (Optional but Recommended)
+- **Purpose**: Brief description for complex logic
+- **Why**: Focus on "why" this approach was chosen
+
+### Validation Checklist
+
+Before submitting any code changes, verify:
+
+- [ ] All public functions have complete documentation
+- [ ] All signals have parameter documentation
+- [ ] All exported variables have documentation
+- [ ] No `@param` or `@return` tags exist
+- [ ] No `## Args:` or `## Options:` patterns exist
+- [ ] All parameters use `[b]param:[/b]` format
+- [ ] All returns use `[b]Returns:[/b]` format
+- [ ] Cross-references use proper BBCode tags
+- [ ] Code examples are wrapped in `[codeblock]`
+- [ ] Documentation is consistent across the entire module
+
+### Examples of Correct Documentation
+
+#### Function with Parameters and Returns
+```gdscript
+## Play a sound effect with optional volume and pitch adjustment
+## 
+## Plays a registered sound effect with the specified options. The sound
+## will be routed to the appropriate audio bus based on the sound's
+## registration settings.
+## 
+## [b]sound_id:[/b] The registered sound identifier
+## [b]options:[/b] Dictionary containing:
+## - [b]vol_db:[/b] Volume adjustment in decibels (default 0.0)
+## - [b]pitch:[/b] Pitch multiplier (default 1.0)
+## - [b]pos:[/b] 2D position for spatial audio
+## 
+## [b]Returns:[/b] The AudioStreamPlayer2D instance or null if sound not found
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Play explosion sound at half volume
+## var player = AudioService.play_sfx("explosion", {"vol_db": -6.0})
+## 
+## # Play UI click with custom pitch
+## AudioService.play_sfx("click", {"pitch": 1.2})
+## [/codeblock]
+func play_sfx(sound_id: StringName, options: Dictionary = {}) -> AudioStreamPlayer2D:
+```
+
+#### Signal Documentation
+```gdscript
+## Emitted when a sound effect is played
+## 
+## [b]sound_id:[/b] The identifier of the sound that was played
+## [b]audio_type:[/b] The type of audio ("2D", "3D", or "UI")
+signal sfx_played(sound_id: StringName, audio_type: String)
+```
+
+#### Member Variable Documentation
+```gdscript
+## Crossfade duration for music transitions
+## 
+## [b]Default:[/b] 2.0 seconds
+## 
+## Controls how long music tracks take to fade between each other.
+## Set to 0.0 for instant transitions.
+@export var music_crossfade_seconds: float = 2.0
+```
+
+### Quick Reference
+
+#### Essential Patterns
+```gdscript
+## [b]param:[/b] description
+## [b]Returns:[/b] description
+## [b]Usage:[/b]
+## [codeblock]
+## # example code
+## [/codeblock]
+```
+
+#### Common Cross-References
+```gdscript
+## See [method function_name] for related functionality
+## Emits [signal signal_name] when complete
+## Uses [member variable_name] for configuration
+```
+
+### Enforcement Actions
+
+1. **Pre-commit Validation**: All documentation must pass format validation
+2. **Code Review**: Documentation compliance is mandatory for approval
+3. **Automated Checks**: Linting tools will flag non-compliant patterns
+4. **Rejection Policy**: PRs with non-compliant documentation will be rejected
+
+---
+
 ## Conformance
 
 All AI-generated PRs must:
 - Include/Update tests (GUT).
 - Pass linting and type checks.
+- **Follow documentation standards** (BBCode format, complete coverage).
 - Avoid risky direct edits to project files; use guarded setup/migrations.

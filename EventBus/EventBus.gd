@@ -10,8 +10,10 @@ var deferred_mode: bool = false
 var strict_mode: bool = false
 
 ## Validates topic against EventTopics registry if strict mode is enabled
-## @param topic: The topic to validate
-## @return: true if topic is valid or strict mode is disabled
+## 
+## [b]topic:[/b] The topic to validate
+## 
+## [b]Returns:[/b] true if topic is valid or strict mode is disabled
 func _validate_topic(topic: StringName) -> bool:
 	if not strict_mode:
 		return true
@@ -21,8 +23,9 @@ func _validate_topic(topic: StringName) -> bool:
 	return true
 
 ## Subscribe to a specific event topic
-## @param topic: The event topic to subscribe to
-## @param cb: Callable to invoke when the event is published
+## 
+## [b]topic:[/b] The event topic to subscribe to
+## [b]cb:[/b] Callable to invoke when the event is published
 func sub(topic: StringName, cb: Callable) -> void:
 	if not _validate_topic(topic):
 		return
@@ -33,8 +36,9 @@ func sub(topic: StringName, cb: Callable) -> void:
 	_subs[key] = arr
 
 ## Unsubscribe from a specific event topic
-## @param topic: The event topic to unsubscribe from
-## @param cb: Callable to remove from subscriptions
+## 
+## [b]topic:[/b] The event topic to unsubscribe from
+## [b]cb:[/b] Callable to remove from subscriptions
 func unsub(topic: StringName, cb: Callable) -> void:
 	var key := StringName(topic)
 	if not _subs.has(key):
@@ -44,9 +48,10 @@ func unsub(topic: StringName, cb: Callable) -> void:
 		_subs.erase(key)
 
 ## Publish an event to all subscribers
-## @param topic: The event topic to publish
-## @param payload: Data to send with the event
-## @param use_envelope: If true, subscribers receive full envelope; if false, just payload
+## 
+## [b]topic:[/b] The event topic to publish
+## [b]payload:[/b] Data to send with the event
+## [b]use_envelope:[/b] If true, subscribers receive full envelope; if false, just payload
 func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false) -> void:
 	if not _validate_topic(topic):
 		return
@@ -65,18 +70,21 @@ func pub(topic: StringName, payload: Dictionary = {}, use_envelope: bool = false
 		_dispatch(key, envelope, listeners, use_envelope)
 
 ## Subscribe to all events (catch-all subscription)
-## @param cb: Callable to invoke for every published event
+## 
+## [b]cb:[/b] Callable to invoke for every published event
 func sub_all(cb: Callable) -> void:
 	if not _catch_all.has(cb):
 		_catch_all.append(cb)
 
 ## Unsubscribe from all events (catch-all subscription)
-## @param cb: Callable to remove from catch-all subscriptions
+## 
+## [b]cb:[/b] Callable to remove from catch-all subscriptions
 func unsub_all(cb: Callable) -> void:
 	_catch_all.erase(cb)
 
 ## Dispatch event to all catch-all subscribers
-## @param envelope: Event envelope containing topic, payload, timestamp, and frame
+## 
+## [b]envelope:[/b] Event envelope containing topic, payload, timestamp, and frame
 func _dispatch_catch_all(envelope: Dictionary) -> void:
 	var pruned := false
 	for cb in _catch_all.duplicate():
@@ -99,10 +107,11 @@ func _cleanup_catch_all_invalid_callables() -> void:
 	_catch_all = cleaned
 
 ## Dispatch event to topic-specific subscribers
-## @param key: The event topic key
-## @param envelope: Event envelope containing topic, payload, timestamp, and frame
-## @param listeners: Array of callables subscribed to this topic
-## @param use_envelope: If true, pass full envelope; if false, pass just payload
+## 
+## [b]key:[/b] The event topic key
+## [b]envelope:[/b] Event envelope containing topic, payload, timestamp, and frame
+## [b]listeners:[/b] Array of callables subscribed to this topic
+## [b]use_envelope:[/b] If true, pass full envelope; if false, pass just payload
 func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_envelope: bool) -> void:
 	var pruned := false
 	for cb in listeners:
@@ -119,7 +128,8 @@ func _dispatch(key: StringName, envelope: Dictionary, listeners: Array, use_enve
 		_cleanup_invalid_callables(key)
 
 ## Clean up invalid callables from a topic's subscription list
-## @param key: The topic key to clean up
+## 
+## [b]key:[/b] The topic key to clean up
 func _cleanup_invalid_callables(key: StringName) -> void:
 	var current: Array = _subs.get(key, [])
 	var cleaned := []

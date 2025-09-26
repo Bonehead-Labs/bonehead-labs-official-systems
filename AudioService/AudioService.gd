@@ -182,14 +182,15 @@ func _apply_all_bus_mutes() -> void:
 # Sound Library
 # ───────────────────────────────────────────────────────────────────────────────
 
-## Register a single sound definition.
+## Register a single sound definition
+## 
 ## stream_or_def can be an AudioStream or Dictionary {stream, bus?, kind?, meta?}
-## Args:
-##   id: unique identifier
-##   stream_or_def: AudioStream or Dictionary as above
-##   bus: default bus to route this sound to (e.g., BUS_SFX)
-##   kind: optional tag (e.g., "SFX" | "UI" | "MUSIC")
-##   meta: arbitrary developer metadata stored with the entry
+## 
+## [b]id:[/b] unique identifier
+## [b]stream_or_def:[/b] AudioStream or Dictionary as above
+## [b]bus:[/b] default bus to route this sound to (e.g., [member BUS_SFX])
+## [b]kind:[/b] optional tag (e.g., "SFX" | "UI" | "MUSIC")
+## [b]meta:[/b] arbitrary developer metadata stored with the entry
 func register_sound(id: StringName, stream_or_def, bus: StringName = BUS_SFX, kind: String = "SFX", meta: Dictionary = {}) -> void:
     var entry: Dictionary
     if typeof(stream_or_def) == TYPE_DICTIONARY:
@@ -204,7 +205,9 @@ func register_sound(id: StringName, stream_or_def, bus: StringName = BUS_SFX, ki
         entry = {"stream": stream_or_def, "bus": bus, "kind": kind, "meta": meta}
     _library[String(id)] = entry
 
-## Bulk register sounds: defs is Dictionary[id] = stream or def-dict
+## Bulk register sounds
+## 
+## [b]defs:[/b] Dictionary[id] = stream or def-dict
 func register_sounds(defs: Dictionary) -> void:
     for key in defs.keys():
         register_sound(StringName(key), defs[key])
@@ -332,12 +335,14 @@ func _on_player_ui_finished(p: AudioStreamPlayer) -> void:
 # SFX play helpers
 # ───────────────────────────────────────────────────────────────────────────────
 
-## Play a 2D sound by id.
-## Options:
-##   vol_db?: float (default 0.0)
-##   pitch?: float (default 1.0)
-##   pos?: Vector2
-##   parent?: Node (attach the player under this node; defaults to pool root)
+## Play a 2D sound by id
+## 
+## [b]id:[/b] Sound identifier
+## [b]options:[/b] Dictionary containing:
+## - [b]vol_db:[/b] float (default 0.0)
+## - [b]pitch:[/b] float (default 1.0)
+## - [b]pos:[/b] Vector2
+## - [b]parent:[/b] Node (attach the player under this node; defaults to pool root)
 func play_sfx(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer2D:
     var def := get_sound(id)
     if def.is_empty():
@@ -365,12 +370,14 @@ func play_sfx(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer2D:
     sfx_played.emit(id, "2D")
     return p
 
-## Play a 3D sound by id.
-## Options:
-##   vol_db?: float (default 0.0)
-##   pitch?: float (default 1.0)
-##   pos?: Vector3
-##   parent?: Node (attach the player under this node; defaults to pool root)
+## Play a 3D sound by id
+## 
+## [b]id:[/b] Sound identifier
+## [b]options:[/b] Dictionary containing:
+## - [b]vol_db:[/b] float (default 0.0)
+## - [b]pitch:[/b] float (default 1.0)
+## - [b]pos:[/b] Vector3
+## - [b]parent:[/b] Node (attach the player under this node; defaults to pool root)
 func play_sfx_3d(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer3D:
     var def := get_sound(id)
     if def.is_empty():
@@ -400,10 +407,12 @@ func play_sfx_3d(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer3
     sfx_played.emit(id, "3D")
     return p
 
-## Play a UI sound by id.
-## Options:
-##   vol_db?: float (default 0.0)
-##   pitch?: float (default 1.0)
+## Play a UI sound by id
+## 
+## [b]id:[/b] Sound identifier
+## [b]options:[/b] Dictionary containing:
+## - [b]vol_db:[/b] float (default 0.0)
+## - [b]pitch:[/b] float (default 1.0)
 func play_ui(id: StringName, options: Dictionary = {}) -> AudioStreamPlayer:
     var def := get_sound(id)
     if def.is_empty():
@@ -474,10 +483,10 @@ func _set_stream_loop(stream: AudioStream, loop: bool) -> void:
         (stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD if loop else AudioStreamWAV.LOOP_DISABLED
 
 ## Play music by id, crossfading from current track
-## Args:
-##   id: sound id registered with kind "MUSIC" (convention only)
-##   fade_seconds: duration; if < 0, uses music_crossfade_seconds
-##   loop: whether the stream should loop
+## 
+## [b]id:[/b] sound id registered with kind "MUSIC" (convention only)
+## [b]fade_seconds:[/b] duration; if < 0, uses [member music_crossfade_seconds]
+## [b]loop:[/b] whether the stream should loop
 func play_music_by_id(id: StringName, fade_seconds: float = -1.0, loop: bool = true) -> void:
     var def := get_sound(id)
     if def.is_empty():
@@ -491,10 +500,10 @@ func play_music_by_id(id: StringName, fade_seconds: float = -1.0, loop: bool = t
     music_started.emit(id)
 
 ## Play a raw music stream, crossfading from current track
-## Args:
-##   stream: AudioStream resource
-##   fade_seconds: duration; if < 0, uses music_crossfade_seconds
-##   loop: whether the stream should loop
+## 
+## [b]stream:[/b] AudioStream resource
+## [b]fade_seconds:[/b] duration; if < 0, uses [member music_crossfade_seconds]
+## [b]loop:[/b] whether the stream should loop
 func play_music_stream(stream: AudioStream, fade_seconds: float = -1.0, loop: bool = true) -> void:
     if fade_seconds < 0.0:
         fade_seconds = music_crossfade_seconds
