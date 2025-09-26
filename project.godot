@@ -10,7 +10,9 @@ config_version=5
 
 [application]
 
-config/name="bonehead-labs-official-systems"
+config/name="Bonehead Labs Official Systems"
+config/version="0.3.1"
+config/description="Plug-and-play game systems for Godot 4.5 - First version with maintained changelog"
 run/main_scene="uid://m28heqtswbuq"
 config/features=PackedStringArray("4.5", "GL Compatibility")
 config/icon="uid://c3hfyfmy1awmy"
