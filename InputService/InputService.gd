@@ -1,6 +1,8 @@
 class_name _InputService
 extends Node
 
+const InputConfig = preload("res://InputService/InputConfig.gd")
+
 # ───────────────────────────────────────────────────────────────────────────────
 # InputService (Godot 4)
 # Centralized input handling for actions, axes, context gating, rebinding, and
@@ -36,8 +38,22 @@ const SAVE_ID       : String = "input_bindings_v1"
 const SAVE_PRIORITY : int = 20
 
 # Configuration
-var mirror_to_eventbus: bool = true
-var emit_axis_events: bool = true
+var mirror_to_eventbus: bool:
+    get:
+        return _mirror_to_eventbus_enabled
+    set(value):
+        if _mirror_to_eventbus_enabled == value:
+            return
+        _mirror_to_eventbus_enabled = value
+        _update_axis_processing()
+var emit_axis_events: bool:
+    get:
+        return _emit_axis_events_enabled
+    set(value):
+        if _emit_axis_events_enabled == value:
+            return
+        _emit_axis_events_enabled = value
+        _update_axis_processing()
 var process_always: bool = false: set = _set_process_policy
 var rebind_capture_escape_cancels: bool = true
 
@@ -53,6 +69,8 @@ var _rebind_action: StringName = StringName("")
 var _default_bindings: Dictionary = {}
 var _last_active_device_kind: String = "keyboard"
 var _last_active_device_id: int = 0
+var _emit_axis_events_enabled: bool = true
+var _mirror_to_eventbus_enabled: bool = true
 
 func _ready() -> void:
     _load_config()
@@ -61,6 +79,7 @@ func _ready() -> void:
     _prime_axis_last_values()
     _connect_device_signals()
     _update_process_policy()
+    _update_axis_processing()
     # Register with SaveService (if available)
     if Engine.is_editor_hint() == false:
         SaveService.register_saveable(self)
@@ -657,12 +676,17 @@ func _apply_rebind(action: StringName, e: InputEvent) -> void:
 func _set_process_policy(always: bool) -> void:
     process_always = always
     _update_process_policy()
+    _update_axis_processing()
 
 ## Update the node's process mode based on current policy
 ## 
 ## Applies the current process_always setting to the node's process_mode.
 func _update_process_policy() -> void:
     process_mode = Node.PROCESS_MODE_WHEN_PAUSED if process_always else Node.PROCESS_MODE_PAUSABLE
+
+func _update_axis_processing() -> void:
+    var needs_process: bool = emit_axis_events or mirror_to_eventbus
+    set_process(needs_process)
 
 ## Serialize an input event to a dictionary
 ## 

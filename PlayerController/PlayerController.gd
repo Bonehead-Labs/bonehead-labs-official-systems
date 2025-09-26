@@ -48,6 +48,8 @@ var _axis_values: Dictionary[StringName, float] = {}
 var _interaction_detector: InteractionDetectorScript = null
 var _abilities: Dictionary[StringName, Node] = {}
 var _health_component: HealthComponentScript = null
+var _autoload_cache: Dictionary[StringName, Node] = {}
+var _warned_missing_input_service: bool = false
 
 func _ready() -> void:
     if movement_config == null:
@@ -76,6 +78,7 @@ func _physics_process(delta: float) -> void:
         _state_machine.physics_update_state(delta)
     velocity = _velocity
     move_and_slide()
+    _velocity = velocity
     _update_after_physics(delta)
 
 ## Teleport the player to a spawn position and emit analytics hooks
@@ -136,10 +139,9 @@ func get_current_state() -> StringName:
 
 func enable_gameplay_input(enabled: bool) -> void:
     """Enable or disable gameplay input context."""
-    if Engine.has_singleton("InputService"):
-        var input_service := Engine.get_singleton("InputService") as Object
-        if input_service and input_service.has_method("enable_context"):
-            input_service.call("enable_context", "gameplay", enabled)
+    var input_service: Node = _get_autoload_singleton(StringName("InputService"))
+    if input_service and input_service.has_method("enable_context"):
+        input_service.call("enable_context", "gameplay", enabled)
 
 func is_platformer_mode() -> bool:
     return movement_config != null and movement_config.movement_mode == 0  # MovementMode.PLATFORMER
@@ -833,22 +835,33 @@ func _load_abilities_data(abilities_data: Dictionary) -> void:
 func _resolve_state_machine() -> void:
     if state_machine_path.is_empty():
         _ensure_state_machine_child()
-        
-    var node: Node = get_node_or_null(state_machine_path)
+
+    var node: Node = null
+    if not state_machine_path.is_empty():
+        node = get_node_or_null(state_machine_path)
+
+    if node == null:
+        _ensure_state_machine_child()
+        if state_machine_path.is_empty():
+            return
+        node = get_node_or_null(state_machine_path)
+
     if node is StateMachine:
         _state_machine = node
         _register_builtin_states()
         _refresh_state_context()
-        
+
         # Connect state machine signals
         if not _state_machine.state_changed.is_connected(_on_state_changed):
             _state_machine.state_changed.connect(_on_state_changed)
         if not _state_machine.state_event.is_connected(_on_state_event):
             _state_machine.state_event.connect(_on_state_event)
-            
-        # Start in idle state if no current state
-        if _state_machine.get_current_state() == StringName():
-            _state_machine.transition_to(STATE_IDLE)
+
+        # Ensure current state instance is initialized with the latest context
+        var current: StringName = _state_machine.get_current_state()
+        if current == StringName():
+            current = STATE_IDLE
+        _state_machine.transition_to(current)
 
 ## Ensure state machine child exists
 ## 
@@ -923,21 +936,43 @@ func _sample_input() -> Vector2:
     if movement_config == null:
         return Vector2.ZERO
     
-    # Use EventBus-based input from InputService (no more manual polling)
-    if _input_service_connected and Engine.has_singleton("InputService"):
-        var x: float = clamp(_axis_values.get(StringName("move_x"), 0.0), -1.0, 1.0)
-        var y: float = clamp(_axis_values.get(StringName("move_y"), 0.0), -1.0, 1.0)
-        
-        # Respect vertical input restrictions
-        if not movement_config.allow_vertical_input:
-            y = 0.0
-            
-        return Vector2(x, y)
+    var x: float = 0.0
+    var y: float = 0.0
     
-    # Fallback: return zero if InputService is not available
-    # This ensures the system degrades gracefully
-    push_warning("PlayerController: InputService not available, input will be zero")
-    return Vector2.ZERO
+    # Try InputService first
+    if _input_service_connected and not _axis_values.is_empty():
+        x = clamp(_axis_values.get(StringName("move_x"), 0.0), -1.0, 1.0)
+        y = clamp(_axis_values.get(StringName("move_y"), 0.0), -1.0, 1.0)
+    else:
+        # Fallback to direct input
+        if movement_config.use_axis_input:
+            x = Input.get_axis(movement_config.axis_negative_action, movement_config.axis_positive_action)
+            y = Input.get_axis(movement_config.axis_vertical_negative_action, movement_config.axis_vertical_positive_action)
+        else:
+            # Use individual actions
+            if Input.is_action_pressed(movement_config.move_left_action):
+                x -= 1.0
+            if Input.is_action_pressed(movement_config.move_right_action):
+                x += 1.0
+            if Input.is_action_pressed(movement_config.move_up_action):
+                y -= 1.0
+            if Input.is_action_pressed(movement_config.move_down_action):
+                y += 1.0
+
+        # Ensure jump/interact still work without InputService
+        if Input.is_action_just_pressed(movement_config.jump_action):
+            _record_jump_buffer()
+        if Input.is_action_just_pressed(movement_config.interact_action):
+            interact()
+
+    if not movement_config.allow_vertical_input:
+        y = 0.0
+
+    if not _input_service_connected and _axis_values.is_empty() and not _warned_missing_input_service:
+        push_warning("PlayerController: InputService autoload not found, using direct input fallback")
+        _warned_missing_input_service = true
+
+    return Vector2(x, y)
 
 ## Apply deadzone to input vector
 ## 
@@ -1009,10 +1044,9 @@ func _update_after_physics(delta: float) -> void:
 ## Registers the player controller as a saveable object with the SaveService
 ## so it can be included in save/load operations.
 func _register_with_save_service() -> void:
-    if Engine.has_singleton("SaveService"):
-        var save_service: Object = Engine.get_singleton("SaveService") as Object
-        if save_service and save_service.has_method("register_saveable"):
-            save_service.call("register_saveable", self)
+    var save_service: Node = _get_autoload_singleton(StringName("SaveService"))
+    if save_service and save_service.has_method("register_saveable"):
+        save_service.call("register_saveable", self)
 
 ## Connect to InputService signals
 ## 
@@ -1022,16 +1056,24 @@ func _connect_input_service() -> void:
     if Engine.is_editor_hint() or _input_service_connected:
         return
         
-    if Engine.has_singleton("InputService"):
-        var input_service: Object = Engine.get_singleton("InputService") as Object
-        if input_service and input_service.has_signal("action_event"):
-            input_service.action_event.connect(_on_action_event)
-            _input_service_connected = true
-        if input_service and input_service.has_signal("axis_event"):
-            input_service.axis_event.connect(_on_axis_event)
-            _input_service_connected = true
-        if input_service and input_service.has_method("enable_context"):
-            input_service.call("enable_context", "gameplay", true)
+    var input_service: Node = _get_autoload_singleton(StringName("InputService"))
+    if input_service == null:
+        push_warning("PlayerController: InputService autoload not found, input disabled")
+        return
+
+    var action_callable := Callable(self, "_on_action_event")
+    var axis_callable := Callable(self, "_on_axis_event")
+
+    if input_service.has_signal("action_event") and not input_service.is_connected("action_event", action_callable):
+        input_service.connect("action_event", action_callable)
+        _input_service_connected = true
+    if input_service.has_signal("axis_event") and not input_service.is_connected("axis_event", axis_callable):
+        input_service.connect("axis_event", axis_callable)
+        _input_service_connected = true
+    if input_service.has_method("enable_context"):
+        input_service.call("enable_context", "gameplay", true)
+    if _input_service_connected:
+        _warned_missing_input_service = false
 
 ## Disconnect from InputService signals
 ## 
@@ -1040,34 +1082,34 @@ func _disconnect_input_service() -> void:
     if not _input_service_connected or Engine.is_editor_hint():
         return
         
-    if Engine.has_singleton("InputService"):
-        var input_service: Object = Engine.get_singleton("InputService") as Object
-        if input_service and input_service.has_signal("action_event"):
-            input_service.action_event.disconnect(_on_action_event)
-        if input_service and input_service.has_signal("axis_event"):
-            input_service.axis_event.disconnect(_on_axis_event)
+    var input_service: Node = _get_autoload_singleton(StringName("InputService"))
+    if input_service:
+        var action_callable := Callable(self, "_on_action_event")
+        var axis_callable := Callable(self, "_on_axis_event")
+        if input_service.has_signal("action_event") and input_service.is_connected("action_event", action_callable):
+            input_service.disconnect("action_event", action_callable)
+        if input_service.has_signal("axis_event") and input_service.is_connected("axis_event", axis_callable):
+            input_service.disconnect("axis_event", axis_callable)
     _input_service_connected = false
 
 func _connect_eventbus_input() -> void:
     """Connect to EventBus input events as primary input source."""
     if Engine.is_editor_hint():
         return
-    if Engine.has_singleton("EventBus"):
-        var event_bus := Engine.get_singleton("EventBus") as Object
-        if event_bus and event_bus.has_method("sub"):
-            # Subscribe to input events from EventBus
-            event_bus.call("sub", EventTopics.INPUT_ACTION, _on_eventbus_action)
-            event_bus.call("sub", EventTopics.INPUT_AXIS, _on_eventbus_axis)
+    var event_bus: Node = _get_autoload_singleton(StringName("EventBus"))
+    if event_bus and event_bus.has_method("sub"):
+        # Subscribe to input events from EventBus
+        event_bus.call("sub", EventTopics.INPUT_ACTION, Callable(self, "_on_eventbus_action"))
+        event_bus.call("sub", EventTopics.INPUT_AXIS, Callable(self, "_on_eventbus_axis"))
 
 func _disconnect_eventbus_input() -> void:
     """Disconnect from EventBus input events."""
     if Engine.is_editor_hint():
         return
-    if Engine.has_singleton("EventBus"):
-        var event_bus := Engine.get_singleton("EventBus") as Object
-        if event_bus and event_bus.has_method("unsub"):
-            event_bus.call("unsub", EventTopics.INPUT_ACTION, _on_eventbus_action)
-            event_bus.call("unsub", EventTopics.INPUT_AXIS, _on_eventbus_axis)
+    var event_bus: Node = _get_autoload_singleton(StringName("EventBus"))
+    if event_bus and event_bus.has_method("unsub"):
+        event_bus.call("unsub", EventTopics.INPUT_ACTION, Callable(self, "_on_eventbus_action"))
+        event_bus.call("unsub", EventTopics.INPUT_AXIS, Callable(self, "_on_eventbus_axis"))
 
 func _on_eventbus_action(payload: Dictionary) -> void:
     """Handle input action events from EventBus."""
@@ -1171,32 +1213,31 @@ func _on_state_event(event: StringName, data: Variant) -> void:
 ## [b]topic:[/b] Event topic to publish
 ## [b]payload:[/b] Event data dictionary
 func _emit_player_event(topic: StringName, payload: Dictionary[StringName, Variant]) -> void:
-    if Engine.has_singleton("EventBus"):
+    var event_bus: Node = _get_autoload_singleton(StringName("EventBus"))
+    if event_bus and event_bus.has_method("pub"):
         payload[StringName("timestamp_ms")] = Time.get_ticks_msec()
-        Engine.get_singleton("EventBus").call("pub", topic, payload)
+        event_bus.call("pub", topic, payload)
 
 func _connect_eventbus_health() -> void:
     """Connect to EventBus health events for player-specific handling."""
     if Engine.is_editor_hint():
         return
-    if Engine.has_singleton("EventBus"):
-        var event_bus := Engine.get_singleton("EventBus") as Object
-        if event_bus and event_bus.has_method("sub"):
-            # Subscribe to combat events for this player
-            event_bus.call("sub", EventTopics.COMBAT_HIT, _on_eventbus_damage)
-            event_bus.call("sub", EventTopics.COMBAT_HEAL, _on_eventbus_heal)
-            event_bus.call("sub", EventTopics.COMBAT_ENTITY_DEATH, _on_eventbus_death)
+    var event_bus: Node = _get_autoload_singleton(StringName("EventBus"))
+    if event_bus and event_bus.has_method("sub"):
+        # Subscribe to combat events for this player
+        event_bus.call("sub", EventTopics.COMBAT_HIT, Callable(self, "_on_eventbus_damage"))
+        event_bus.call("sub", EventTopics.COMBAT_HEAL, Callable(self, "_on_eventbus_heal"))
+        event_bus.call("sub", EventTopics.COMBAT_ENTITY_DEATH, Callable(self, "_on_eventbus_death"))
 
 func _disconnect_eventbus_health() -> void:
     """Disconnect from EventBus health events."""
     if Engine.is_editor_hint():
         return
-    if Engine.has_singleton("EventBus"):
-        var event_bus := Engine.get_singleton("EventBus") as Object
-        if event_bus and event_bus.has_method("unsub"):
-            event_bus.call("unsub", EventTopics.COMBAT_HIT, _on_eventbus_damage)
-            event_bus.call("unsub", EventTopics.COMBAT_HEAL, _on_eventbus_heal)
-            event_bus.call("unsub", EventTopics.COMBAT_ENTITY_DEATH, _on_eventbus_death)
+    var event_bus: Node = _get_autoload_singleton(StringName("EventBus"))
+    if event_bus and event_bus.has_method("unsub"):
+        event_bus.call("unsub", EventTopics.COMBAT_HIT, Callable(self, "_on_eventbus_damage"))
+        event_bus.call("unsub", EventTopics.COMBAT_HEAL, Callable(self, "_on_eventbus_heal"))
+        event_bus.call("unsub", EventTopics.COMBAT_ENTITY_DEATH, Callable(self, "_on_eventbus_death"))
 
 func _on_eventbus_damage(payload: Dictionary) -> void:
     """Handle damage events from EventBus for this player."""
@@ -1244,3 +1285,32 @@ func _on_eventbus_death(payload: Dictionary) -> void:
     _emit_player_event(EventTopics.PLAYER_DIED, {
         StringName("source"): source
     } as Dictionary[StringName, Variant])
+
+func _get_autoload_singleton(name: StringName) -> Node:
+    var cached: Node = _autoload_cache.get(name)
+    if is_instance_valid(cached):
+        return cached
+
+    if not is_instance_valid(get_tree()):
+        return null
+
+    var root: Node = get_tree().root
+    if root == null:
+        return null
+
+    var name_str := String(name)
+    var node: Node = root.get_node_or_null(NodePath(name_str))
+
+    if node == null:
+        var abs_path := NodePath("/root/%s" % name_str)
+        node = root.get_node_or_null(abs_path)
+
+    if node == null:
+        for child in root.get_children():
+            if String(child.name) == name_str:
+                node = child
+                break
+
+    if node:
+        _autoload_cache[name] = node
+    return node

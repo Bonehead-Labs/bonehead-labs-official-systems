@@ -11,6 +11,8 @@ func physics_update(delta: float) -> void:
     var input_vector := get_input_vector()
     if is_platformer():
         controller.move_platformer_horizontal(input_vector.x, delta, false)
+        if not controller.is_on_floor():
+            controller.apply_gravity(delta)
         if controller.consume_jump_request():
             safe_transition_to(StringName("jump"), {}, StringName("jump_requested"))
             return
