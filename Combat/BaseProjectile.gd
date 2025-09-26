@@ -149,7 +149,25 @@ func _handle_collision(collision: KinematicCollision2D) -> void:
 			# Default behavior - destroy on collision
 			destroy()
 
-## Set the projectile's initial velocity and target
+## Launch the projectile
+## 
+## Initializes the projectile with direction, speed, and optional target.
+## 
+## [b]direction:[/b] Direction vector for the projectile
+## [b]start_speed:[/b] Initial speed (-1 to use default speed)
+## [b]target:[/b] Target node for homing projectiles (optional)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Launch projectile in direction
+## projectile.launch(Vector2(1, 0), 500.0)
+## 
+## # Launch homing projectile
+## projectile.launch(Vector2(1, 0), 300.0, enemy)
+## 
+## # Launch with default speed
+## projectile.launch(Vector2(0, -1))
+## [/codeblock]
 func launch(direction: Vector2, start_speed: float = -1.0, target: Node2D = null) -> void:
 	if start_speed > 0.0:
 		speed = start_speed
@@ -172,13 +190,20 @@ func launch(direction: Vector2, start_speed: float = -1.0, target: Node2D = null
 			"timestamp_ms": Time.get_ticks_msec()
 		})
 
-## Called when projectile hits something
+## Handle projectile hit
+## 
+## Called when the projectile hits a target. Handles pierce mechanics,
+## impact effects, and destruction logic.
+## 
+## [b]hit_target:[/b] Node that was hit
+## 
+## [b]Usage:[/b] Called automatically by hitbox collision detection
 func on_hit(hit_target: Node) -> void:
 	_pierce_remaining -= 1
 
 	# Create impact effect
 	if impact_effect:
-		var effect = impact_effect.instantiate()
+		var effect: Node = impact_effect.instantiate()
 		get_parent().add_child(effect)
 		effect.global_position = global_position
 
@@ -199,6 +224,10 @@ func on_hit(hit_target: Node) -> void:
 		destroy()
 
 ## Destroy the projectile
+## 
+## Destroys the projectile and creates final impact effects.
+## 
+## [b]Usage:[/b] Called automatically when lifetime expires or pierce count reached
 func destroy() -> void:
 	if _is_destroyed:
 		return
@@ -207,40 +236,133 @@ func destroy() -> void:
 
 	# Create final impact effect
 	if impact_effect:
-		var effect = impact_effect.instantiate()
+		var effect: Node = impact_effect.instantiate()
 		get_parent().add_child(effect)
 		effect.global_position = global_position
 
 	# Return to pool or queue free
 	queue_free()
 
-## Set projectile parameters dynamically
+## Set projectile damage
+## 
+## Updates the damage amount and type for this projectile.
+## 
+## [b]amount:[/b] New damage amount
+## [b]type:[/b] New damage type (default: current type)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Set basic damage
+## projectile.set_damage(25.0)
+## 
+## # Set damage with type
+## projectile.set_damage(30.0, DamageInfo.DamageType.FIRE)
+## 
+## # Upgrade projectile damage
+## projectile.set_damage(projectile.damage_amount * 1.5)
+## [/codeblock]
 func set_damage(amount: float, type: DamageInfoScript.DamageType = damage_type) -> void:
 	damage_amount = amount
 	damage_type = type
 
-	var hitbox = get_node_or_null("HitboxComponent")
+	var hitbox: Node = get_node_or_null("HitboxComponent")
 	if hitbox and hitbox.has_method("set_damage"):
 		hitbox.set_damage(amount, type)
 
+## Set projectile knockback
+## 
+## Updates the knockback force for this projectile.
+## 
+## [b]force:[/b] New knockback force vector
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Set knockback
+## projectile.set_knockback(Vector2(100, -50))
+## 
+## # Remove knockback
+## projectile.set_knockback(Vector2.ZERO)
+## 
+## # Increase knockback
+## projectile.set_knockback(projectile.knockback_force * 1.5)
+## [/codeblock]
 func set_knockback(force: Vector2) -> void:
 	knockback_force = force
-	var hitbox = get_node_or_null("HitboxComponent")
+	var hitbox: Node = get_node_or_null("HitboxComponent")
 	if hitbox:
 		hitbox.knockback_force = force
 
+## Set projectile faction
+## 
+## Updates the faction for this projectile.
+## 
+## [b]new_faction:[/b] New faction name
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Set faction
+## projectile.set_faction("player")
+## 
+## # Set enemy faction
+## projectile.set_faction("enemy")
+## 
+## # Copy faction from source
+## projectile.set_faction(source_entity.faction)
+## [/codeblock]
 func set_faction(new_faction: String) -> void:
 	faction = new_faction
-	var hitbox = get_node_or_null("HitboxComponent")
+	var hitbox: Node = get_node_or_null("HitboxComponent")
 	if hitbox:
 		hitbox.faction = new_faction
 
-## Get projectile stats
+## Get projectile damage info
+## 
+## Creates a DamageInfo instance for this projectile.
+## 
+## [b]Returns:[/b] DamageInfo instance with projectile parameters
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Get damage info for custom damage dealing
+## var damage_info = projectile.get_damage_info()
+## target.take_damage(damage_info)
+## 
+## # Modify damage before applying
+## var damage_info = projectile.get_damage_info()
+## damage_info.amount *= 1.5  # 50% more damage
+## [/codeblock]
 func get_damage_info() -> Variant:
 	return DamageInfoScript.create_damage(damage_amount, damage_type, self)
 
+## Get time projectile has been alive
+## 
+## [b]Returns:[/b] Time in seconds since launch
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## var age = projectile.get_time_alive()
+## if age > 2.0:
+##     print("Projectile is getting old")
+## 
+## # Use for visual effects
+## var alpha = 1.0 - (age / projectile.lifetime)
+## projectile.modulate.a = alpha
+## [/codeblock]
 func get_time_alive() -> float:
 	return _time_alive
 
+## Get distance projectile has traveled
+## 
+## [b]Returns:[/b] Distance in pixels from start position
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## var distance = projectile.get_distance_traveled()
+## print("Projectile traveled ", distance, " pixels")
+## 
+## # Use for range calculations
+## if distance > max_range:
+##     projectile.destroy()
+## [/codeblock]
 func get_distance_traveled() -> float:
 	return global_position.distance_to(_start_position)

@@ -60,13 +60,28 @@ func _process(delta: float) -> void:
 			_perform_respawn()
 
 ## Handle entity death
+## 
+## Initiates the death sequence for an entity, including animations,
+## loot dropping, and respawn if enabled.
+## 
+## [b]entity:[/b] The entity that died
+## [b]damage_info:[/b] DamageInfo that caused the death (optional)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Handle death from damage
+## death_handler.handle_death(player, damage_info)
+## 
+## # Handle scripted death
+## death_handler.handle_death(enemy)
+## [/codeblock]
 func handle_death(entity: Node, damage_info: Variant = null) -> void:
 	if _is_dying:
 		return
 
 	_is_dying = true
 
-	var death_info = {
+	var death_info: Dictionary = {
 		"entity": entity,
 		"damage_info": damage_info,
 		"position": entity.global_position,
@@ -76,7 +91,7 @@ func handle_death(entity: Node, damage_info: Variant = null) -> void:
 
 	# Get faction info
 	if entity.has_node("HurtboxComponent"):
-		var hurtbox = entity.get_node("HurtboxComponent")
+		var hurtbox: Node = entity.get_node("HurtboxComponent")
 		death_info["faction"] = hurtbox.faction
 
 	death_started.emit(entity, death_info)
@@ -89,6 +104,11 @@ func handle_death(entity: Node, damage_info: Variant = null) -> void:
 	_start_death_sequence(entity, death_info)
 
 ## Start the death animation and effects
+## 
+## Begins the visual death sequence, either with animation or immediate cleanup.
+## 
+## [b]entity:[/b] The entity that died
+## [b]death_info:[/b] Death context information
 func _start_death_sequence(entity: Node, death_info: Dictionary) -> void:
 	# Play death animation
 	if death_animation_scene:
@@ -98,8 +118,13 @@ func _start_death_sequence(entity: Node, death_info: Dictionary) -> void:
 		_complete_death_sequence(entity, death_info)
 
 ## Play death animation
+## 
+## Instantiates and plays the death animation scene.
+## 
+## [b]entity:[/b] The entity that died
+## [b]death_info:[/b] Death context information
 func _play_death_animation(entity: Node, death_info: Dictionary) -> void:
-	var animation_name = "death"
+	var animation_name: String = "death"
 
 	death_animation_started.emit(entity, animation_name)
 
@@ -114,13 +139,19 @@ func _play_death_animation(entity: Node, death_info: Dictionary) -> void:
 	_death_animation_instance.global_position = entity.global_position
 
 	# Set up animation completion callback
-	var timer = get_tree().create_timer(death_animation_duration)
+	var timer: SceneTreeTimer = get_tree().create_timer(death_animation_duration)
 	timer.timeout.connect(func():
 		death_animation_completed.emit(entity, animation_name)
 		_complete_death_sequence(entity, death_info)
 	)
 
-## Complete the death sequence (animation done, drop loot, start respawn)
+## Complete the death sequence
+## 
+## Finishes the death process by dropping loot, disabling the entity,
+## and starting respawn if enabled.
+## 
+## [b]entity:[/b] The entity that died
+## [b]death_info:[/b] Death context information
 func _complete_death_sequence(entity: Node, death_info: Dictionary) -> void:
 	if emit_debug_info:
 		print("DeathHandler: Completing death sequence for ", entity.name)
@@ -140,8 +171,13 @@ func _complete_death_sequence(entity: Node, death_info: Dictionary) -> void:
 		_is_dying = false
 
 ## Drop loot for the entity
+## 
+## Generates and spawns loot items based on loot table or default rules.
+## 
+## [b]entity:[/b] The entity that died
+## [b]death_info:[/b] Death context information
 func _drop_loot(entity: Node, death_info: Dictionary) -> void:
-	var loot_items = []
+	var loot_items: Array = []
 
 	# Generate loot based on loot table or entity properties
 	if loot_table_path != "":
@@ -200,6 +236,11 @@ func _set_entity_dead_state(entity: Node, dead: bool) -> void:
 		sprite.visible = not dead
 
 ## Start the respawn process
+## 
+## Initiates the respawn timer for the entity.
+## 
+## [b]entity:[/b] The entity to respawn
+## [b]_death_info:[/b] Death context information (unused)
 func _start_respawn(entity: Node, _death_info: Dictionary) -> void:
 	if emit_debug_info:
 		print("DeathHandler: Starting respawn for ", entity.name, " in ", respawn_delay, " seconds")
@@ -208,6 +249,8 @@ func _start_respawn(entity: Node, _death_info: Dictionary) -> void:
 	_respawn_timer = respawn_delay
 
 ## Perform the actual respawn
+## 
+## Resets the entity to a living state at the respawn position.
 func _perform_respawn() -> void:
 	if not _parent_entity:
 		return
@@ -230,13 +273,17 @@ func _perform_respawn() -> void:
 
 	# Clear status effects
 	if _parent_entity.has_node("StatusEffectManager"):
-		var status_manager = _parent_entity.get_node("StatusEffectManager")
+		var status_manager: Node = _parent_entity.get_node("StatusEffectManager")
 		status_manager.clear_all_effects()
 
 	respawn_completed.emit(_parent_entity, respawn_position)
 	_is_dying = false
 
 ## Reset entity to respawn-ready state
+## 
+## Prepares the entity for respawn by resetting physics and custom state.
+## 
+## [b]entity:[/b] The entity to reset
 func _reset_entity_for_respawn(entity: Node) -> void:
 	# Reset velocity
 	if entity is CharacterBody2D:
@@ -273,16 +320,53 @@ func _emit_death_analytics(death_info: Dictionary) -> void:
 	Engine.get_singleton("EventBus").call("pub", &"combat/entity_death", payload)
 
 ## Configure respawn settings
+## 
+## Sets up respawn behavior for the entity.
+## 
+## [b]enabled:[/b] Whether respawn is enabled
+## [b]delay:[/b] Respawn delay in seconds (default: 3.0)
+## [b]position:[/b] Respawn position (default: Vector2.ZERO)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Enable respawn with custom settings
+## death_handler.set_respawn_enabled(true, 5.0, Vector2(100, 200))
+## 
+## # Disable respawn
+## death_handler.set_respawn_enabled(false)
+## [/codeblock]
 func set_respawn_enabled(enabled: bool, delay: float = 3.0, position: Vector2 = Vector2.ZERO) -> void:
 	respawn_enabled = enabled
 	respawn_delay = delay
 	respawn_position = position
 
-## Get current death state
+## Check if entity is currently dying
+## 
+## [b]Returns:[/b] true if entity is in death sequence, false otherwise
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## if death_handler.is_entity_dying():
+##     # Entity is in death sequence, maybe show death UI
+##     show_death_screen()
+## [/codeblock]
 func is_entity_dying() -> bool:
 	return _is_dying
 
-## Force immediate death (bypasses normal death sequence)
+## Force immediate death
+## 
+## Bypasses the normal death sequence and kills the entity immediately.
+## 
+## [b]entity:[/b] Entity to kill (default: parent entity)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Force kill current entity
+## death_handler.force_death()
+## 
+## # Force kill specific entity
+## death_handler.force_death(target_entity)
+## [/codeblock]
 func force_death(entity: Node = null) -> void:
 	if not entity:
 		entity = _parent_entity
@@ -290,6 +374,18 @@ func force_death(entity: Node = null) -> void:
 		_health_component.kill()
 
 ## Force immediate respawn
+## 
+## Bypasses the respawn timer and respawns the entity immediately.
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Force immediate respawn
+## death_handler.force_respawn()
+## 
+## # Useful for debug commands or special abilities
+## if Input.is_action_just_pressed("debug_respawn"):
+##     death_handler.force_respawn()
+## [/codeblock]
 func force_respawn() -> void:
 	if _respawn_timer > 0.0:
 		_respawn_timer = 0.0

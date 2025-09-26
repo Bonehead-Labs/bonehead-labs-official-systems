@@ -138,18 +138,67 @@ func _emit_hurtbox_event(topic: StringName, hitbox: Variant, damage_info: Varian
 			payload["damage_type"] = "unknown"  # Simplified for now
 		Engine.get_singleton("EventBus").call("pub", topic, payload)
 
-## Enable/disable the hurtbox
+## Enable or disable the hurtbox
+## 
+## Controls whether the hurtbox can receive damage from hitboxes.
+## 
+## [b]value:[/b] Whether the hurtbox should be enabled
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Disable hurtbox (invulnerable)
+## hurtbox.set_enabled(false)
+## 
+## # Re-enable hurtbox
+## hurtbox.set_enabled(true)
+## 
+## # Toggle hurtbox state
+## hurtbox.set_enabled(not hurtbox.enabled)
+## [/codeblock]
 func set_enabled(value: bool) -> void:
 	enabled = value
 	set_deferred("monitoring", value)
 
 ## Check if hurtbox can be damaged by a specific faction
+## 
+## Determines if this hurtbox can take damage from the specified faction
+## based on faction settings and immunity lists.
+## 
+## [b]other_faction:[/b] Faction to check damage compatibility with
+## 
+## [b]Returns:[/b] true if damage is allowed, false otherwise
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## if hurtbox.can_take_damage_from_faction("enemy"):
+##     print("Hurtbox can be damaged by enemy faction")
+## 
+## # Check before applying damage
+## if hurtbox.can_take_damage_from_faction(hitbox.faction):
+##     hurtbox.force_damage(hitbox)
+## [/codeblock]
 func can_take_damage_from_faction(other_faction: String) -> bool:
 	if other_faction == faction and not friendly_fire:
 		return false
 	return not immune_factions.has(other_faction)
 
 ## Get all currently overlapping active hitboxes
+## 
+## Returns a list of hitboxes that are currently overlapping with this hurtbox
+## and are active (can deal damage).
+## 
+## [b]Returns:[/b] Array of active hitbox references
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## var active_hitboxes = hurtbox.get_overlapping_hitboxes()
+## print("Currently overlapping with ", active_hitboxes.size(), " active hitboxes")
+## 
+## # Check for specific hitbox types
+## for hitbox in active_hitboxes:
+##     if hitbox.damage_type == DamageInfo.DamageType.FIRE:
+##         print("Overlapping with fire hitbox!")
+## [/codeblock]
 func get_overlapping_hitboxes() -> Array[Variant]:
 	var active_hitboxes: Array[Variant] = []
 	for hitbox in _overlapping_hitboxes:
@@ -157,12 +206,30 @@ func get_overlapping_hitboxes() -> Array[Variant]:
 			active_hitboxes.append(hitbox)
 	return active_hitboxes
 
-## Force damage application from a specific hitbox (bypasses collision filtering)
+## Force damage application from a specific hitbox
+## 
+## Bypasses normal collision filtering and forces damage application.
+## Useful for scripted damage, environmental hazards, or special abilities.
+## 
+## [b]hitbox:[/b] Hitbox to apply damage from
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Force damage from specific hitbox
+## hurtbox.force_damage(trap_hitbox)
+## 
+## # Force damage from all overlapping hitboxes
+## for hitbox in hurtbox.get_overlapping_hitboxes():
+##     hurtbox.force_damage(hitbox)
+## 
+## # Force damage for scripted events
+## hurtbox.force_damage(scripted_damage_hitbox)
+## [/codeblock]
 func force_damage(hitbox: Variant) -> void:
 	if not enabled or not _health_component:
 		return
 
-	var damage_info = hitbox.create_damage_info()
+	var damage_info: DamageInfoScript = hitbox.create_damage_info()
 	if damage_info and _health_component.take_damage(damage_info):
 		hurtbox_hit.emit(hitbox, damage_info)
 		damage_taken.emit(damage_info.amount, damage_info.source, damage_info)

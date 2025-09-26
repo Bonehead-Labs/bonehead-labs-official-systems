@@ -53,6 +53,24 @@ func _physics_process(delta: float) -> void:
 			_process_spring_knockback(delta)
 
 ## Apply knockback to the target
+## 
+## Applies knockback force to the entity using the configured mode.
+## 
+## [b]force:[/b] Knockback force vector
+## [b]duration:[/b] How long the knockback lasts (default: 0.2 seconds)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Apply basic knockback
+## knockback_resolver.apply_knockback(Vector2(100, -50), 0.3)
+## 
+## # Apply knockback from damage
+## if damage_info.knockback_force != Vector2.ZERO:
+##     knockback_resolver.apply_knockback(damage_info.knockback_force, damage_info.knockback_duration)
+## 
+## # Apply strong knockback
+## knockback_resolver.apply_knockback(Vector2(200, -100), 0.5)
+## [/codeblock]
 func apply_knockback(force: Vector2, duration: float = 0.2) -> void:
 	if not _target_body:
 		push_warning("KnockbackResolver: No target body available")
@@ -82,6 +100,23 @@ func apply_knockback(force: Vector2, duration: float = 0.2) -> void:
 			_knockback_velocity = force
 
 ## Stop knockback immediately
+## 
+## Immediately stops the current knockback and restores normal movement.
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Stop knockback early
+## knockback_resolver.stop_knockback()
+## 
+## # Stop knockback on ground contact
+## if character.is_on_floor():
+##     knockback_resolver.stop_knockback()
+## 
+## # Stop knockback on death
+## func die():
+##     knockback_resolver.stop_knockback()
+##     # ... death logic
+## [/codeblock]
 func stop_knockback() -> void:
 	_is_knockback_active = false
 	_knockback_velocity = Vector2.ZERO
@@ -89,26 +124,115 @@ func stop_knockback() -> void:
 	_restore_original_parameters()
 
 ## Check if knockback is currently active
+## 
+## [b]Returns:[/b] true if knockback is active, false otherwise
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## if knockback_resolver.is_knockback_active():
+##     # Disable movement during knockback
+##     character.set_physics_process(false)
+## else:
+##     # Allow normal movement
+##     character.set_physics_process(true)
+## 
+## # Check for UI feedback
+## if knockback_resolver.is_knockback_active():
+##     show_knockback_effect()
+## [/codeblock]
 func is_knockback_active() -> bool:
 	return _is_knockback_active
 
 ## Get current knockback velocity
+## 
+## [b]Returns:[/b] Current knockback velocity vector
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## var knockback_vel = knockback_resolver.get_knockback_velocity()
+## print("Knockback velocity: ", knockback_vel)
+## 
+## # Use for visual effects
+## if knockback_vel.length() > 100:
+##     show_strong_knockback_effect()
+## [/codeblock]
 func get_knockback_velocity() -> Vector2:
 	return _knockback_velocity
 
-## Get knockback progress (0.0 to 1.0)
+## Get knockback progress
+## 
+## Returns how much of the knockback duration has elapsed.
+## 
+## [b]Returns:[/b] Progress from 0.0 (just started) to 1.0 (completed)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## var progress = knockback_resolver.get_knockback_progress()
+## if progress > 0.5:
+##     print("Knockback is halfway through")
+## 
+## # Use for UI progress bars
+## knockback_bar.value = progress
+## 
+## # Fade out effect over time
+## effect_alpha = 1.0 - progress
+## [/codeblock]
 func get_knockback_progress() -> float:
 	if _knockback_duration <= 0.0:
 		return 1.0
 	return min(_elapsed_time / _knockback_duration, 1.0)
 
-## Set knockback parameters dynamically
+## Set knockback mode
+## 
+## Changes the knockback behavior mode.
+## 
+## [b]new_mode:[/b] New knockback mode to use
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Set to impulse mode for instant knockback
+## knockback_resolver.set_knockback_mode(KnockbackResolver.KnockbackMode.IMPULSE)
+## 
+## # Set to spring mode for bouncy knockback
+## knockback_resolver.set_knockback_mode(KnockbackResolver.KnockbackMode.SPRING)
+## [/codeblock]
 func set_knockback_mode(new_mode: KnockbackMode) -> void:
 	mode = new_mode
 
+## Set mass override
+## 
+## Overrides the effective mass for knockback calculations.
+## 
+## [b]mass:[/b] New mass value (0 = use body's mass)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Make entity lighter (more knockback)
+## knockback_resolver.set_mass_override(0.5)
+## 
+## # Make entity heavier (less knockback)
+## knockback_resolver.set_mass_override(2.0)
+## 
+## # Reset to body mass
+## knockback_resolver.set_mass_override(0.0)
+## [/codeblock]
 func set_mass_override(mass: float) -> void:
 	mass_override = mass
 
+## Set maximum knockback speed
+## 
+## Limits the maximum velocity that can be applied during knockback.
+## 
+## [b]speed:[/b] Maximum speed value
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Limit knockback speed
+## knockback_resolver.set_max_speed(500.0)
+## 
+## # Allow very fast knockback
+## knockback_resolver.set_max_speed(2000.0)
+## [/codeblock]
 func set_max_speed(speed: float) -> void:
 	max_knockback_speed = speed
 

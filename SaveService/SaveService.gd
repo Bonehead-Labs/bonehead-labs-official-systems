@@ -132,48 +132,96 @@ func _profile_dir(id: String) -> String:
 func _is_valid_profile_id(id: String) -> bool:
 	return _id_regex.search(id) != null
 
-## Lists existing profile directory names under `SAVE_ROOT`.
-## Returns an empty array if the directory is not accessible.
+## List all available save profiles
+## 
+## Scans the save directory and returns a list of all existing
+## profile names. Profiles are directories under the save root.
+## 
+## [b]Returns:[/b] Array of profile names (empty if directory inaccessible)
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # List available profiles
+## var profiles = SaveService.list_profiles()
+## for profile in profiles:
+##     print("Found profile: ", profile)
+## [/codeblock]
+## 
+## [b]Important:[/b] This only lists existing profiles. You must call
+## [method set_current_profile] to activate a profile before saving/loading.
 func list_profiles() -> PackedStringArray:
-	var profiles := PackedStringArray()
-	var dir := DirAccess.open(SAVE_ROOT)
+	var profiles: PackedStringArray = PackedStringArray()
+	var dir: DirAccess = DirAccess.open(SAVE_ROOT)
 	if dir == null: 
 		emit_signal("error", "DIR_ACCESS_FAILED", "Could not access save directory")
 		return profiles
 	
 	dir.list_dir_begin()
 	while true:
-		var dir_name := dir.get_next()
+		var dir_name: String = dir.get_next()
 		if dir_name == "": break
 		if dir.current_is_dir() and not dir_name.begins_with("."):
 			profiles.append(dir_name)
 	dir.list_dir_end()
 	return profiles
 
-## Creates (if needed) and switches to a profile.
-## Returns true when the profile is ready and active.
-## In strict mode, profile ids must match: ^[A-Za-z0-9_\-]{1,24}$
+## Create and activate a save profile
+## 
+## Creates a new profile directory if it doesn't exist and switches
+## to it. All subsequent save/load operations will use this profile.
+## 
+## [b]id:[/b] Unique profile identifier (1-24 chars: A-Z, a-z, 0-9, _, -)
+## 
+## [b]Returns:[/b] true if profile is ready and active, false otherwise
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Create and switch to a profile
+## if SaveService.set_current_profile("player1"):
+##     print("Profile 'player1' is now active")
+##     # Now you can save/load for this profile
+## else:
+##     print("Failed to create profile")
+## [/codeblock]
+## 
+## [b]Important:[/b] You must set a profile before saving or loading.
+## Each profile has its own separate save files.
 func set_current_profile(id: String) -> bool:
 	if strict_mode and not _is_valid_profile_id(id):
 		emit_signal("error", "INVALID_PROFILE_ID", "Profile ID must be 1-24 chars: A-Z, a-z, 0-9, _, -")
 		return false
 
-	var profile_path := _profile_dir(id)
+	var profile_path: String = _profile_dir(id)
 	if not DirAccess.dir_exists_absolute(profile_path):
-		var err := DirAccess.make_dir_recursive_absolute(profile_path)
+		var err: Error = DirAccess.make_dir_recursive_absolute(profile_path)
 		if err != OK:
 			emit_signal("error", "PROFILE_CREATE_FAILED", "Could not create profile directory: %s" % str(err))
 			return false
 		
 		# Create checkpoint directory
-		var checkpoint_path := "%s/%s" % [profile_path, CHECKPOINT_DIR]
+		var checkpoint_path: String = "%s/%s" % [profile_path, CHECKPOINT_DIR]
 		DirAccess.make_dir_recursive_absolute(checkpoint_path)
 
 	current_profile_id = id
 	emit_signal("profile_changed", id)
 	return true
 
-## Returns the active profile id, or empty string if none.
+## Get the currently active profile ID
+## 
+## Returns the ID of the currently active profile, or empty string
+## if no profile is set.
+## 
+## [b]Returns:[/b] Active profile ID or empty string
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Check current profile
+## var current = SaveService.get_current_profile()
+## if current.is_empty():
+##     print("No profile selected")
+## else:
+##     print("Current profile: ", current)
+## [/codeblock]
 func get_current_profile() -> String:
 	return current_profile_id
 
@@ -215,8 +263,27 @@ func _delete_directory_recursive(dir: DirAccess) -> void:
 	dir.list_dir_end()
 
 # ---- Saveable Registration ----
-## Registers an object to participate in save/load.
-## The object must implement: save_data, load_data, get_save_id, get_save_priority.
+## Register an object to participate in save/load operations
+## 
+## Adds an object to the list of saveable objects. The object must
+## implement the save protocol: save_data(), load_data(), get_save_id(),
+## and get_save_priority().
+## 
+## [b]saveable:[/b] Object implementing the save protocol
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Register a player object
+## var player = get_node("Player")
+## SaveService.register_saveable(player)
+## 
+## # Register multiple objects
+## for enemy in get_tree().get_nodes_in_group("enemies"):
+##     SaveService.register_saveable(enemy)
+## [/codeblock]
+## 
+## [b]Important:[/b] Objects must implement the save protocol methods.
+## Consider extending [class _ISaveable] for a clear interface.
 func register_saveable(saveable) -> void:
 	if saveable in _registered_saveables:
 		return
@@ -235,11 +302,41 @@ func register_saveable(saveable) -> void:
 	
 	_registered_saveables.append(saveable)
 
-## Unregisters a previously registered saveable object.
+## Unregister a saveable object
+## 
+## Removes an object from the list of saveable objects.
+## The object will no longer be saved or loaded.
+## 
+## [b]saveable:[/b] Object to remove from save/load operations
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Unregister a destroyed object
+## SaveService.unregister_saveable(destroyed_enemy)
+## 
+## # Unregister all enemies
+## for enemy in get_tree().get_nodes_in_group("enemies"):
+##     SaveService.unregister_saveable(enemy)
+## [/codeblock]
 func unregister_saveable(saveable) -> void:
 	_registered_saveables.erase(saveable)
 
-## Returns a shallow copy of the registered saveables list.
+## Get a list of all registered saveable objects
+## 
+## Returns a copy of the list of objects that will be saved/loaded.
+## 
+## [b]Returns:[/b] Array of registered saveable objects
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Check registered objects
+## var saveables = SaveService.get_registered_saveables()
+## print("Registered saveables: ", saveables.size())
+## 
+## # Debug saveable IDs
+## for saveable in saveables:
+##     print("Saveable ID: ", saveable.get_save_id())
+## [/codeblock]
 func get_registered_saveables() -> Array:
 	return _registered_saveables.duplicate()
 
@@ -319,8 +416,33 @@ func _deserialize_to_saveables(data: Dictionary) -> bool:
 	return success_count == total_count or not strict_mode
 
 # ---- Save Pipeline ----
-## Saves all registered saveables into `<profile>/<save_id>.json`.
-## Emits `before_save` and `after_save`. Returns true on success.
+## Save the current game state
+## 
+## Saves all registered saveable objects to a JSON file.
+## The save file is stored in the current profile directory.
+## 
+## [b]save_id:[/b] Unique identifier for this save slot (default: "main")
+## 
+## [b]Returns:[/b] true if save succeeded, false otherwise
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Save to main slot
+## if SaveService.save_game():
+##     print("Game saved successfully")
+## 
+## # Save to specific slot
+## if SaveService.save_game("level1_checkpoint"):
+##     print("Checkpoint saved")
+## 
+## # Save with error handling
+## if not SaveService.save_game("quicksave"):
+##     print("Save failed!")
+## [/codeblock]
+## 
+## [b]Important:[/b] You must set a profile and register saveable objects
+## before calling this function. The save file will be created at:
+## `user://saves/<profile>/<save_id>.json`
 func save_game(save_id: String = "main") -> bool:
 	if current_profile_id.is_empty():
 		emit_signal("error", "NO_PROFILE", "No profile selected")
@@ -342,7 +464,7 @@ func save_game(save_id: String = "main") -> bool:
 	
 	emit_signal("before_save", save_id)
 	
-	var success := _perform_save(save_id)
+	var success: bool = _perform_save(save_id)
 	
 	_is_saving = false
 	
@@ -407,8 +529,33 @@ func _save_metadata(save_id: String, meta_data: Dictionary) -> void:
 		write_file.close()
 
 # ---- Load Pipeline ----
-## Loads and applies data from `<profile>/<save_id>.json`.
-## Emits `before_load` and `after_load`. Returns true on success.
+## Load a previously saved game state
+## 
+## Loads and applies data from a previously saved game file.
+## All registered saveable objects will have their load_data() method called.
+## 
+## [b]save_id:[/b] Identifier of the save slot to load (default: "main")
+## 
+## [b]Returns:[/b] true if load succeeded, false otherwise
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## # Load main save
+## if SaveService.load_game():
+##     print("Game loaded successfully")
+## 
+## # Load specific slot
+## if SaveService.load_game("level1_checkpoint"):
+##     print("Checkpoint loaded")
+## 
+## # Load with error handling
+## if not SaveService.load_game("quicksave"):
+##     print("Load failed - save file may not exist")
+## [/codeblock]
+## 
+## [b]Important:[/b] You must set a profile and register saveable objects
+## before calling this function. The save file must exist at:
+## `user://saves/<profile>/<save_id>.json`
 func load_game(save_id: String = "main") -> bool:
 	if current_profile_id.is_empty():
 		emit_signal("error", "NO_PROFILE", "No profile selected")
@@ -430,7 +577,7 @@ func load_game(save_id: String = "main") -> bool:
 	
 	emit_signal("before_load", save_id)
 	
-	var success := _perform_load(save_id)
+	var success: bool = _perform_load(save_id)
 	
 	_is_loading = false
 	
