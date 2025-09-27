@@ -61,3 +61,33 @@ func test_label_translates_text() -> void:
     get_tree().root.add_child(label)
     assert_eq(label.text, "Score")
     label.queue_free()
+
+func test_panel_uses_theme_surface() -> void:
+    var panel := WidgetFactory.create_panel({})
+    get_tree().root.add_child(panel)
+    var style := panel.get_theme_stylebox("panel")
+    assert_true(style is StyleBox)
+    panel.queue_free()
+
+func test_layout_helpers_apply_spacing() -> void:
+    var vbox := WidgetFactory.create_vbox({})
+    get_tree().root.add_child(vbox)
+    assert_gt(vbox.get_theme_constant("separation"), 0)
+    vbox.queue_free()
+    var hbox := WidgetFactory.create_hbox({})
+    get_tree().root.add_child(hbox)
+    assert_gt(hbox.get_theme_constant("separation"), 0)
+    hbox.queue_free()
+
+func test_factory_reports_missing_theme_service() -> void:
+    theme_service.queue_free()
+    await get_tree().process_frame
+    var panel := WidgetFactory.create_panel({})
+    assert_true(panel is PanelContainer)
+    var last_error := WidgetFactory.get_last_error()
+    assert_true(last_error.begins_with("WidgetFactory.create_panel"))
+    panel.queue_free()
+
+func test_factory_clears_error_when_dependencies_return() -> void:
+    WidgetFactory.create_panel({})
+    assert_eq(WidgetFactory.get_last_error(), "")

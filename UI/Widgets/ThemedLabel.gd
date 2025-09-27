@@ -8,7 +8,12 @@ const ROOT_LOCALIZATION_PATH: NodePath = NodePath("/root/ThemeLocalization")
 @export var size_token: StringName = StringName("body")
 @export var color_token: StringName = StringName("text_primary")
 
+var _missing_theme_logged: bool = false
+var _missing_localization_logged: bool = false
+
 func _ready() -> void:
+    if not _ensure_theme_service():
+        return
     _apply_theme()
     _update_text()
     _connect_theme_changed()
@@ -39,9 +44,25 @@ func _update_text() -> void:
         text = localization.translate(label_token, label_fallback)
     elif not label_fallback.is_empty():
         text = label_fallback
+    elif label_token != StringName() and localization == null:
+        _report_missing_localization()
 
 func _theme_service() -> _ThemeService:
     return get_node_or_null(ROOT_THEME_SERVICE_PATH) as _ThemeService
 
 func _localization() -> _ThemeLocalization:
     return get_node_or_null(ROOT_LOCALIZATION_PATH) as _ThemeLocalization
+
+func _ensure_theme_service() -> bool:
+    if _theme_service() == null:
+        if not _missing_theme_logged:
+            _missing_theme_logged = true
+            push_error("ThemedLabel: ThemeService autoload not found. Add ThemeService before instantiating ThemedLabel.")
+        return false
+    return true
+
+func _report_missing_localization() -> void:
+    if _missing_localization_logged:
+        return
+    _missing_localization_logged = true
+    push_error("ThemedLabel: ThemeLocalization autoload not found. Token translation is unavailable.")

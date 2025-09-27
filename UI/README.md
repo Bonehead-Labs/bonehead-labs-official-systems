@@ -10,6 +10,8 @@
 | `InputGlyphService` | `res://UI/HUD/InputGlyphService.gd` | Device-aware action glyphs |
 | `SettingsService` (optional) | _custom implementation_ | Persists user preferences (bindings, analytics) |
 
+> ⚠️ **Dependency checks**: The UI module intentionally fails fast when these autoloads are missing. Widgets emit descriptive errors (e.g., `"ThemeService autoload not found"`) during `_ready()`. Add the autoloads before instantiating any UI scenes.
+
 ## Theme Tokens & Accessibility
 
 - Default tokens: `res://UI/Theme/default_theme.tokens.tres`
@@ -38,8 +40,43 @@ Reusable controls live under `res://UI/Widgets/`:
 
 - `BaseButton.gd`, `BaseToggle.gd`, `BaseSlider.gd`, `ThemedLabel.gd`
 - `WidgetFactory.gd` exposes `create_button`, `create_toggle`, `create_slider`, and `create_label`
+- `WidgetFactory.gd` also ships layout helpers (`create_panel`, `create_vbox`, `create_hbox`) so you can compose menus without hand-coding container nodes.
 
 All widgets subscribe to `ThemeService.theme_changed` so they react to palette updates and high-contrast toggles automatically.
+
+## Layout Shells
+
+Reusable shells live under `res://UI/Layouts/` and provide ready-to-wire composition slots:
+
+- `PanelShell.tscn` + `_PanelShell`: panel wrapper exposing `set_header`, `set_body`, `set_footer`, and matching clear/getters.
+- `DialogShell.tscn` + `_DialogShell`: dialog surface with title/description labels and action bar helpers (`set_title`, `set_description`, `add_action`).
+- `ScrollableLogShell.tscn` + `_ScrollableLogShell`: log surface with `append_entry`/`set_entries` APIs and a capped scrollback.
+
+Example usage:
+
+```gdscript
+var panel_scene := load("res://UI/Layouts/PanelShell.tscn")
+var panel_shell := panel_scene.instantiate() as _PanelShell
+add_child(panel_shell)
+
+var header := WidgetFactory.create_label({"label_fallback": "Event Bus"})
+panel_shell.set_header(header)
+
+var content := WidgetFactory.create_vbox({})
+content.add_child(WidgetFactory.create_label({"label_fallback": "Waiting for events..."}))
+panel_shell.set_body(content)
+```
+
+### Migration Notes
+
+- `Example_Scenes/EventBus/EventBusDemo.gd` can swap its hand-built panel for `ScrollableLogShell.tscn` while using `WidgetFactory` buttons/labels. The log shell already exposes `append_entry` and accepts additional header controls via `set_header`.
+- Existing UI overlays should add required autoloads, instance the shell scenes, and feed content through the slot APIs rather than creating raw `PanelContainer`/`VBoxContainer` nodes.
+
+### Integration Checklist
+
+- Add required autoloads to the project settings before loading UI scenes.
+- Instantiate layout containers through `WidgetFactory` to guarantee styling and dependency guards are applied consistently.
+- Handle any error logs surfaced by the widgets—these indicate missing dependencies or incorrect setup.
 
 ## Screen Manager
 

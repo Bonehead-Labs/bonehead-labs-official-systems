@@ -5,7 +5,11 @@ const ROOT_THEME_SERVICE_PATH: NodePath = NodePath("/root/ThemeService")
 @export var accent_color_token: StringName = StringName("accent")
 @export var track_color_token: StringName = StringName("surface_alt")
 
+var _missing_theme_logged: bool = false
+
 func _ready() -> void:
+    if not _ensure_theme_service():
+        return
     _apply_theme()
     _connect_theme_changed()
 
@@ -55,3 +59,11 @@ func _create_bar(track: Color, accent: Color) -> StyleBox:
 
 func _theme_service() -> _ThemeService:
     return get_node_or_null(ROOT_THEME_SERVICE_PATH) as _ThemeService
+
+func _ensure_theme_service() -> bool:
+    if _theme_service() == null:
+        if not _missing_theme_logged:
+            _missing_theme_logged = true
+            push_error("BaseSlider: ThemeService autoload not found. Add ThemeService before instantiating BaseSlider.")
+        return false
+    return true
