@@ -42,8 +42,6 @@ func _ready() -> void:
 	# Spawn the player at current position
 	spawn(global_position)
 
-
-
 func _on_player_jumped() -> void:
 	print("Player jumped!")
 

@@ -3,11 +3,16 @@
 const ACTIONS := [
     "move_left", "move_right", "move_up", "move_down",
     "jump", "pause", "interact", "attack",
+    "debug_toggle_inspector",
     "ui_accept", "ui_cancel"
 ]
 
 const CONTEXTS := {                      # action groups you can toggle
-    "gameplay": ["move_left","move_right","move_up","move_down","jump","pause","interact","attack"],
+    "gameplay": [
+        "move_left","move_right","move_up","move_down",
+        "jump","pause","interact","attack",
+        "debug_toggle_inspector"
+    ],
     "ui":       ["ui_accept","ui_cancel"]
 }
 
