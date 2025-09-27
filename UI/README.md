@@ -72,6 +72,24 @@ panel_shell.set_body(content)
 - `Example_Scenes/EventBus/EventBusDemo.gd` can swap its hand-built panel for `ScrollableLogShell.tscn` while using `WidgetFactory` buttons/labels. The log shell already exposes `append_entry` and accepts additional header controls via `set_header`.
 - Existing UI overlays should add required autoloads, instance the shell scenes, and feed content through the slot APIs rather than creating raw `PanelContainer`/`VBoxContainer` nodes.
 
+### Menu Builder
+
+- `_MenuBuilder` (see `res://UI/Layouts/MenuBuilder.gd`) turns schema dictionaries into interactive menus. The example config lives at `res://UI/Layouts/menu_schema.example.gd` and mirrors the required keys.
+- Schemas define `shell_scene`, optional `shell.header`/`shell.footer`, `sections[].controls[]`, and `actions`. `WidgetFactory` names (`button`, `toggle`, `label`, `slider`, `vbox`, `hbox`, `panel`) are used via the `factory` field.
+- Call `validate_config(schema)` during authoring, `validate_bindings(schema)` after wiring `action_callbacks`, then `build_menu(schema)` to receive the shell control. Errors are surfaced through `push_error` with dependency hints when autoloads are missing.
+- Example:
+
+```gdscript
+var builder := _MenuBuilder.new()
+builder.action_callbacks = {
+    StringName("apply_changes"): Callable(self, "_on_apply"),
+    StringName("close_menu"): Callable(self, "_on_close")
+}
+
+var menu := builder.build_menu(load("res://UI/Layouts/menu_schema.example.gd").MENU_SCHEMA)
+add_child(menu)
+```
+
 ### Integration Checklist
 
 - Add required autoloads to the project settings before loading UI scenes.

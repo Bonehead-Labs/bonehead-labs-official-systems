@@ -1,5 +1,5 @@
 class_name _DialogShell
-extends "res://UI/Layouts/PanelShell.gd"
+extends _PanelShell
 
 @export var title_label_path: NodePath = NodePath("Layout/HeaderSlot/TitleLabel")
 @export var description_label_path: NodePath = NodePath("Layout/HeaderSlot/DescriptionLabel")
@@ -83,4 +83,4 @@ func _apply_dialog_theme() -> void:
         return
     var spacing := theme_service.get_spacing(StringName("sm"))
     _action_bar.add_theme_constant_override("separation", int(spacing))
-*** End File
+

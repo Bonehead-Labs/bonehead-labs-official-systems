@@ -15,11 +15,11 @@
 - [x] Provide migration notes showing how existing demos (EventBusDemo) can replace bespoke panels without manual layout code (no code changes yet).
 
 ## Milestone 3 – Data-Driven Menu Composition
-- [ ] Define a config schema (`UI/Layouts/menu_schema.example.tres` or `.gd`) for describing sections, controls, and actions; ensure schema avoids nested typed collections per AGENTS guidance.
-- [ ] Implement a `MenuBuilder.gd` utility that consumes the schema, instantiates shells + widgets via the factory, and wires signals using exported callbacks, while checking for required autoloads and logging descriptive errors when missing.
-- [ ] Include validation helpers that surface misconfigured tokens/actions through descriptive errors instead of asserts.
-- [ ] Document the schema (docs + in-file docstrings) using Godot BBCode conventions with sample JSON/GDScript dictionaries.
-- [ ] Cover `MenuBuilder` with GUT tests for happy paths, missing tokens, and duplicate actions.
+- [x] Define a config schema (`UI/Layouts/menu_schema.example.tres` or `.gd`) for describing sections, controls, and actions; ensure schema avoids nested typed collections per AGENTS guidance.
+- [x] Implement a `MenuBuilder.gd` utility that consumes the schema, instantiates shells + widgets via the factory, and wires signals using exported callbacks, while checking for required autoloads and logging descriptive errors when missing.
+- [x] Include validation helpers that surface misconfigured tokens/actions through descriptive errors instead of asserts.
+- [x] Document the schema (docs + in-file docstrings) using Godot BBCode conventions with sample JSON/GDScript dictionaries.
+- [x] Cover `MenuBuilder` with GUT tests for happy paths, missing tokens, and duplicate actions.
 
 ## Milestone 4 – Integration & Showcase
 - [ ] Wire `UIScreenManager` to accept config-driven menus (e.g., `push_menu(config_dict)`) while preserving existing APIs and validating autoload availability before use.

@@ -4,7 +4,7 @@
 [ext_resource type="Script" uid="uid://c6poeldvjadm3" path="res://PlayerController/MovementConfig.gd" id="2_26d5r"]
 [ext_resource type="Script" uid="uid://cpkauddtq4ljc" path="res://Example_Scenes/player.gd" id="2_player_script"]
 [ext_resource type="Script" uid="uid://dvanv42j3w4m" path="res://systems/fsm/StateMachine.gd" id="3_state_machine_script"]
-[ext_resource type="Script" uid="uid://bl0gaxo4ibwbd" path="res://Example_Scenes/EventBusDemo.gd" id="4_eventbus_demo_script"]
+[ext_resource type="Script" uid="uid://bl0gaxo4ibwbd" path="res://Example_Scenes/EventBus/EventBusDemo.gd" id="4_eventbus_demo_script"]
 
 [sub_resource type="Resource" id="Resource_ks73t"]
 script = ExtResource("2_26d5r")

@@ -1,5 +1,5 @@
 class_name _ScrollableLogShell
-extends "res://UI/Layouts/PanelShell.gd"
+extends _PanelShell
 
 @export var log_label_path: NodePath = NodePath("Layout/BodySlot/LogViewContainer/LogView")
 @export var max_entries: int = 64
