@@ -5,8 +5,8 @@ extends _PlayerController2D
 ## The PlayerController is now the main CharacterBody2D node
 
 func _ready() -> void:
-	# Set up movement configuration for platformer
-	_setup_movement_config()
+	# Optional code based movement config.
+	#_setup_movement_config()
 	
 	# Call parent's _ready() to initialize the PlayerController system
 	super._ready()
@@ -31,6 +31,33 @@ func _ready() -> void:
 	# Spawn the player at current position
 	spawn(global_position)
 
+
+
+func _on_player_jumped() -> void:
+	print("Player jumped!")
+
+func _on_player_landed() -> void:
+	print("Player landed!")
+
+func _on_state_changed(previous: StringName, current: StringName) -> void:
+	print("Player state changed from ", previous, " to ", current)
+
+func _physics_process(delta: float) -> void:
+	# Call parent's physics process
+	super._physics_process(delta)
+	
+	# # Debug: Print velocity and position occasionally
+	# if Engine.get_process_frames() % 60 == 0:  # Every second
+	# 	print("Player physics - Position: ", global_position, " Velocity: ", velocity)
+	# 	print("Player physics - State: ", get_current_state())
+	# 	print("Player physics - Input: ", get_movement_input())
+	# 	print("Player physics - On floor: ", is_on_floor())
+	# 	print("Player physics - InputService connected: ", _input_service_connected)
+	# 	print("Player physics - Axis values: ", _axis_values)
+
+
+
+##----Code based movement config (Alternative to using the MovementConfig.tres file)----
 func _setup_movement_config() -> void:
 	# Create and configure movement settings for platformer
 	movement_config = MovementConfig.new()
@@ -61,25 +88,3 @@ func _setup_movement_config() -> void:
 	movement_config.move_down_action = StringName("move_down")
 	movement_config.jump_action = StringName("jump")
 	movement_config.friction = 0.0
-
-func _on_player_jumped() -> void:
-	print("Player jumped!")
-
-func _on_player_landed() -> void:
-	print("Player landed!")
-
-func _on_state_changed(previous: StringName, current: StringName) -> void:
-	print("Player state changed from ", previous, " to ", current)
-
-func _physics_process(delta: float) -> void:
-	# Call parent's physics process
-	super._physics_process(delta)
-	
-	# Debug: Print velocity and position occasionally
-	if Engine.get_process_frames() % 60 == 0:  # Every second
-		print("Player physics - Position: ", global_position, " Velocity: ", velocity)
-		print("Player physics - State: ", get_current_state())
-		print("Player physics - Input: ", get_movement_input())
-		print("Player physics - On floor: ", is_on_floor())
-		print("Player physics - InputService connected: ", _input_service_connected)
-		print("Player physics - Axis values: ", _axis_values)
