@@ -68,7 +68,7 @@ func _build_ui() -> void:
 	layout.add_child(title)
 
 	var instructions := Label.new()
-	instructions.text = "Press movement keys, jump, or attack to see INPUT_ACTION events. Press F4 (debug_toggle_inspector) to open the inspector."
+	instructions.text = "EventBus demo. Press movement keys, jump, or attack to see INPUT_ACTION events."
 	instructions.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	layout.add_child(instructions)
 

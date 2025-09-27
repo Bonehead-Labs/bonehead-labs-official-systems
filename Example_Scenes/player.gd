@@ -5,7 +5,7 @@ extends _PlayerController2D
 ## The PlayerController is now the main CharacterBody2D node
 
 # Attack state script and constant
-const AttackStateScript = preload("res://Example_Scenes/PlayerStateAttack.gd")
+const AttackStateScript = preload("res://Example_Scenes/CustomState/PlayerStateAttack.gd")
 const STATE_ATTACK := StringName("attack")
 
 func _ready() -> void:
