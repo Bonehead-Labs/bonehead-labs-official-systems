@@ -9,17 +9,13 @@ const PANEL_SIZE := Vector2(420, 260)
 var _log_view: RichTextLabel
 var _log_lines: Array[String] = []
 var _emit_button: Button
-var _inspector: EventBusInspector
 var _input_action_listener := Callable()
 var _debug_log_listener := Callable()
 var _catch_all_listener := Callable()
-var _event_bus: Node
-
 func _ready() -> void:
 	if not (Engine.is_editor_hint() or OS.has_feature("debug")):
 		return
-	_event_bus = _locate_autoload(StringName("EventBus"))
-	if _event_bus == null:
+	if not EventBus:
 		push_error("EventBusDemo: EventBus autoload is missing; demo UI disabled.")
 		return
 
@@ -29,24 +25,23 @@ func _ready() -> void:
 
 	_build_ui()
 	_setup_eventbus_listeners()
-	_spawn_inspector()
 
-	_log_event(&"demo/startup", {"message": "EventBus demo initialized. Move, jump, or attack to fire input events."})
-	_event_bus.call("pub", EventTopics.DEBUG_LOG, {
+	_log_event(&"demo/startup", {"message": "EventBus demo initialized. Move, jump, or attack to fire input events."}) # demo StringName &"demo/startup", use EventTopics in practise.
+	EventBus.pub(EventTopics.DEBUG_LOG, {
 		"msg": "EventBus demo is ready. Press the demo button or use input actions to publish events.",
 		"level": "INFO",
 		"source": "EventBusDemo"
 	})
 
 func _exit_tree() -> void:
-	if _event_bus == null:
+	if not EventBus:
 		return
 	if _input_action_listener.is_valid():
-		_event_bus.call("unsub", EventTopics.INPUT_ACTION, _input_action_listener)
+		EventBus.unsub(EventTopics.INPUT_ACTION, _input_action_listener)
 	if _debug_log_listener.is_valid():
-		_event_bus.call("unsub", EventTopics.DEBUG_LOG, _debug_log_listener)
+		EventBus.unsub(EventTopics.DEBUG_LOG, _debug_log_listener)
 	if _catch_all_listener.is_valid():
-		_event_bus.call("unsub_all", _catch_all_listener)
+		EventBus.unsub_all(_catch_all_listener)
 
 func _build_ui() -> void:
 	var panel := PanelContainer.new()
@@ -96,21 +91,12 @@ func _setup_eventbus_listeners() -> void:
 	_input_action_listener = Callable(self, "_on_input_action_event")
 	_debug_log_listener = Callable(self, "_on_debug_log_event")
 	_catch_all_listener = Callable(self, "_on_event_catch_all")
-	_event_bus.call("sub", EventTopics.INPUT_ACTION, _input_action_listener)
-	_event_bus.call("sub", EventTopics.DEBUG_LOG, _debug_log_listener)
-	_event_bus.call("sub_all", _catch_all_listener)
-
-func _spawn_inspector() -> void:
-	_inspector = EventBusInspector.new()
-	_inspector.name = "EventBusInspector"
-	_inspector.enabled = true
-	_inspector.visible = false
-	_inspector.anchors_preset = PRESET_FULL_RECT
-	_inspector.z_index = 100
-	add_child(_inspector)
+	EventBus.sub(EventTopics.INPUT_ACTION, _input_action_listener)
+	EventBus.sub(EventTopics.DEBUG_LOG, _debug_log_listener)
+	EventBus.sub_all(_catch_all_listener)
 
 func _on_emit_button_pressed() -> void:
-	_event_bus.call("pub", EventTopics.DEBUG_LOG, {
+	EventBus.pub(EventTopics.DEBUG_LOG, {
 		"msg": "Demo button pressed",
 		"level": "INFO",
 		"source": "EventBusDemo",
@@ -122,7 +108,7 @@ func _on_input_action_event(payload: Dictionary) -> void:
 	var action: StringName = payload.get("action", StringName(""))
 	var edge: String = payload.get("edge", "")
 	if action == StringName("debug_toggle_inspector") and edge == "pressed":
-		_toggle_inspector()
+		_log_event(&"demo/debug_toggle", {"info": "Received debug_toggle_inspector action"})
 
 func _on_debug_log_event(payload: Dictionary) -> void:
 	_log_event(EventTopics.DEBUG_LOG, payload)
@@ -132,12 +118,6 @@ func _on_event_catch_all(envelope: Dictionary) -> void:
 	var payload: Dictionary = envelope.get("payload", {})
 	var summary := "{}" if payload.is_empty() else JSON.stringify(payload)
 	print("EventBus catch-all ->", topic, summary)
-
-func _toggle_inspector() -> void:
-	if _inspector == null:
-		return
-	_inspector.visible = not _inspector.visible
-	_log_event(&"demo/inspector", {"visible": _inspector.visible})
 
 func _log_event(topic: StringName, payload: Dictionary) -> void:
 	if _log_view == null:
@@ -150,12 +130,3 @@ func _log_event(topic: StringName, payload: Dictionary) -> void:
 		_log_lines.pop_front()
 	_log_view.text = "\n".join(_log_lines)
 
-func _locate_autoload(singleton_name: StringName) -> Node:
-	var root := get_tree().root
-	if root == null:
-		return null
-	var node := root.get_node_or_null(NodePath(String(singleton_name)))
-	if node:
-		return node
-	var abs_path := NodePath("/root/%s" % singleton_name)
-	return root.get_node_or_null(abs_path)

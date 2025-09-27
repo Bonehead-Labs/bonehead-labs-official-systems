@@ -54,15 +54,13 @@ func _on_state_changed(previous: StringName, current: StringName) -> void:
 ## Connect to input events for attack functionality
 func _connect_attack_input() -> void:
 	# Connect to InputService if available
-	var input_service = _get_autoload_singleton(StringName("InputService"))
-	if input_service and input_service.has_signal("action_event"):
-		if not input_service.action_event.is_connected(_on_action_event):
-			input_service.action_event.connect(_on_action_event)
+	if InputService and InputService.has_signal("action_event"):
+		if not InputService.action_event.is_connected(_on_action_event):
+			InputService.action_event.connect(_on_action_event)
 	
 	# Also connect to EventBus input events as fallback
-	var event_bus = _get_autoload_singleton(StringName("EventBus"))
-	if event_bus and event_bus.has_method("sub"):
-		event_bus.call("sub", EventTopics.INPUT_ACTION, Callable(self, "_on_eventbus_action"))
+	if EventBus and EventBus.has_method("sub"):
+		EventBus.call("sub", EventTopics.INPUT_ACTION, Callable(self, "_on_eventbus_action"))
 
 ## Handle action events from InputService
 func _on_action_event(action: StringName, edge: String, _device: int, _event: InputEvent) -> void:
