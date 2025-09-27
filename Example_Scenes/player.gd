@@ -4,12 +4,19 @@ extends _PlayerController2D
 ## This demonstrates how to integrate the bonehead-labs systems into a game
 ## The PlayerController is now the main CharacterBody2D node
 
+# Attack state script and constant
+const AttackStateScript = preload("res://Example_Scenes/PlayerStateAttack.gd")
+const STATE_ATTACK := StringName("attack")
+
 func _ready() -> void:
 	# Optional code based movement config.
 	#_setup_movement_config()
 	
 	# Call parent's _ready() to initialize the PlayerController system
 	super._ready()
+	
+	# Register the attack state
+	register_additional_state(STATE_ATTACK, AttackStateScript)
 	
 	# Debug: Check if state machine is working
 	print("Player ready - State machine: ", _state_machine)
@@ -22,11 +29,15 @@ func _ready() -> void:
 		print("Player ready - Has move state: ", _state_machine.has_state("move"))
 		print("Player ready - Has jump state: ", _state_machine.has_state("jump"))
 		print("Player ready - Has fall state: ", _state_machine.has_state("fall"))
+		print("Player ready - Has attack state: ", _state_machine.has_state("attack"))
 	
 	# Connect to player controller signals for debugging/effects
 	player_jumped.connect(_on_player_jumped)
 	player_landed.connect(_on_player_landed)
 	state_changed.connect(_on_state_changed)
+	
+	# Connect to input events for attack
+	_connect_attack_input()
 	
 	# Spawn the player at current position
 	spawn(global_position)
@@ -41,6 +52,45 @@ func _on_player_landed() -> void:
 
 func _on_state_changed(previous: StringName, current: StringName) -> void:
 	print("Player state changed from ", previous, " to ", current)
+
+## Connect to input events for attack functionality
+func _connect_attack_input() -> void:
+	# Connect to InputService if available
+	var input_service = _get_autoload_singleton(StringName("InputService"))
+	if input_service and input_service.has_signal("action_event"):
+		if not input_service.action_event.is_connected(_on_action_event):
+			input_service.action_event.connect(_on_action_event)
+	
+	# Also connect to EventBus input events as fallback
+	var event_bus = _get_autoload_singleton(StringName("EventBus"))
+	if event_bus and event_bus.has_method("sub"):
+		event_bus.call("sub", EventTopics.INPUT_ACTION, Callable(self, "_on_eventbus_action"))
+
+## Handle action events from InputService
+func _on_action_event(action: StringName, edge: String, _device: int, _event: InputEvent) -> void:
+	if action == StringName("attack") and edge == "pressed":
+		_handle_attack_input()
+
+## Handle action events from EventBus
+func _on_eventbus_action(payload: Dictionary) -> void:
+	var action: StringName = payload.get("action", StringName(""))
+	var edge: String = payload.get("edge", "")
+	
+	if action == StringName("attack") and edge == "pressed":
+		_handle_attack_input()
+
+## Handle attack input and transition to attack state
+func _handle_attack_input() -> void:
+	var current_state = get_current_state()
+	
+	# Only allow attack from idle or move states
+	if current_state == "idle" or current_state == "move":
+		print("Attack input detected! Transitioning to attack state...")
+		var result = transition_to_state(STATE_ATTACK, {"attack_type": "basic", "timestamp": Time.get_ticks_msec()})
+		if result != OK:
+			print("Failed to transition to attack state: ", result)
+	else:
+		print("Attack ignored - current state is: ", current_state)
 
 func _physics_process(delta: float) -> void:
 	# Call parent's physics process

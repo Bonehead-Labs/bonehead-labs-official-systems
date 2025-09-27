@@ -2,12 +2,12 @@
 # Per-project list of actions/contexts/axes. Change this per game.
 const ACTIONS := [
     "move_left", "move_right", "move_up", "move_down",
-    "jump", "pause", "interact",
+    "jump", "pause", "interact", "attack",
     "ui_accept", "ui_cancel"
 ]
 
 const CONTEXTS := {                      # action groups you can toggle
-    "gameplay": ["move_left","move_right","move_up","move_down","jump","pause","interact"],
+    "gameplay": ["move_left","move_right","move_up","move_down","jump","pause","interact","attack"],
     "ui":       ["ui_accept","ui_cancel"]
 }
 
