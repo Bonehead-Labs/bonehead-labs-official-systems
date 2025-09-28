@@ -37,7 +37,8 @@ func _create_item(descriptor: Variant) -> Node:
     if descriptor is Dictionary:
         var data: Dictionary = descriptor as Dictionary
         var button: Button = _WidgetFactory.create_button({})
-        _UITemplateDataBinder.apply_text(button, data.get(StringName("text"), data.get(StringName("label"), "")), Callable(self, "resolve_text"))
+        var text_value: Variant = data.get(StringName("text"), data.get(StringName("label"), ""))
+        button.text = resolve_text(text_value)
         if data.has(StringName("tooltip")):
             button.tooltip_text = resolve_text(data[StringName("tooltip")])
         if data.has(StringName("icon")) and data[StringName("icon")] is Texture2D:

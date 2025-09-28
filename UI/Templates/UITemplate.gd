@@ -58,7 +58,7 @@ func _on_template_ready() -> void:
     pass
 
 ## Internal method overridden by derived templates to bind data.
-func _apply_content(content: Dictionary) -> void:
+func _apply_content(_content: Dictionary) -> void:
     pass
 
 ## Emit a template event and publish to EventBus when present.

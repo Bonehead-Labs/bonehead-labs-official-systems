@@ -1,10 +1,12 @@
-[gd_scene load_steps=9 format=3 uid="uid://2m0f4o7sf663"]
+[gd_scene load_steps=11 format=3 uid="uid://2m0f4o7sf663"]
 
 [ext_resource type="Texture2D" uid="uid://cpevkofokkwdo" path="res://icon.svg" id="1_qwtrq"]
 [ext_resource type="Script" uid="uid://c6poeldvjadm3" path="res://PlayerController/MovementConfig.gd" id="2_26d5r"]
 [ext_resource type="Script" uid="uid://cpkauddtq4ljc" path="res://Example_Scenes/player.gd" id="2_player_script"]
 [ext_resource type="Script" uid="uid://dvanv42j3w4m" path="res://systems/fsm/StateMachine.gd" id="3_state_machine_script"]
 [ext_resource type="Script" uid="uid://bl0gaxo4ibwbd" path="res://Example_Scenes/EventBus/EventBusDemo.gd" id="4_eventbus_demo_script"]
+[ext_resource type="Script" uid="uid://xcjq3y3j2wm8" path="res://Example_Scenes/LevelDemo.gd" id="5_level_demo_script"]
+[ext_resource type="Script" uid="uid://cn8qm5xy2rtcd" path="res://Example_Scenes/UI/PauseMenuDemo.gd" id="6_pause_menu_script"]
 
 [sub_resource type="Resource" id="Resource_ks73t"]
 script = ExtResource("2_26d5r")
@@ -19,6 +21,7 @@ size = Vector2(128, 130)
 size = Vector2(1154, 30)
 
 [node name="Level" type="Node2D"]
+script = ExtResource("5_level_demo_script")
 
 [node name="Player" type="CharacterBody2D" parent="."]
 position = Vector2(572, 296)
@@ -52,3 +55,18 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("4_eventbus_demo_script")
+
+[node name="PauseMenuDemo" type="Control" parent="."]
+layout_mode = 3
+anchors_preset = 6
+anchor_left = 1.0
+anchor_top = 0.5
+anchor_right = 1.0
+anchor_bottom = 0.5
+offset_left = 449.0
+offset_top = 203.0
+offset_right = 449.0
+offset_bottom = 203.0
+grow_horizontal = 0
+grow_vertical = 2
+script = ExtResource("6_pause_menu_script")

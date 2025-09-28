@@ -129,4 +129,5 @@ func _log_event(topic: StringName, payload: Dictionary) -> void:
 	while _log_lines.size() > LOG_LINE_LIMIT:
 		_log_lines.pop_front()
 	_log_view.text = "\n".join(_log_lines)
-
+	# Auto-scroll to bottom to show latest entry
+	_log_view.scroll_to_line(_log_view.get_line_count() - 1)

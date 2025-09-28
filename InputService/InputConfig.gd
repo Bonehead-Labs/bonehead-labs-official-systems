@@ -4,7 +4,7 @@ const ACTIONS := [
     "move_left", "move_right", "move_up", "move_down",
     "jump", "pause", "interact", "attack", "inventory",
     "debug_toggle_inspector",
-    "ui_accept", "ui_cancel"
+    "ui_accept", "ui_cancel", "ui_settings"
 ]
 
 const CONTEXTS := {                      # action groups you can toggle
@@ -13,7 +13,7 @@ const CONTEXTS := {                      # action groups you can toggle
         "jump","pause","interact","attack","inventory",
         "debug_toggle_inspector"
     ],
-    "ui":       ["ui_accept","ui_cancel"]
+    "ui":       ["ui_accept","ui_cancel","ui_settings"]
 }
 
 const AXES := {                          # simple axis wiring
