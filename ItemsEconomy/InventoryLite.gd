@@ -106,3 +106,88 @@ func load_data(data: Dictionary) -> bool:
 		_items[item_id] = {"def": null, "quantity": qty}
 	inventory_changed.emit()
 	return true
+
+## Build tooltip data for an inventory item
+## 
+## Creates a rich tooltip dictionary with item information including
+## description, tags, and rarity from the item database.
+## 
+## [b]item:[/b] Dictionary containing item data with id, display_name, quantity
+## 
+## [b]Returns:[/b] Dictionary with tooltip data for UI templates
+func build_tooltip(item: Dictionary) -> Dictionary:
+	# Get additional info from JSON data for richer tooltip
+	var item_data = ItemDatabase.get_item(item["id"])
+	var tooltip = "%s\nQuantity: %d" % [item["display_name"], item["quantity"]]
+	
+	if not item_data.is_empty():
+		var description = item_data.get("description", "")
+		if not description.is_empty():
+			tooltip += "\n\n" + description
+		
+		var tags = item_data.get("tags", [])
+		if not tags.is_empty():
+			tooltip += "\n\nTags: " + ", ".join(tags)
+		
+		var rarity = item_data.get("rarity", "common")
+		if rarity != "common":
+			tooltip += "\nRarity: " + rarity.capitalize()
+	
+	return {
+		StringName("fallback"): tooltip
+	}
+
+## Build UI content data for inventory templates
+## 
+## Creates the data structure needed by InventoryTemplate to render
+## the inventory grid with items, icons, and tooltips.
+## 
+## [b]columns:[/b] Number of columns for the grid (default: 4)
+## 
+## [b]Returns:[/b] Dictionary with title, columns, and slots data for UI templates
+func build_ui_content(columns: int = 4) -> Dictionary:
+	var items = list_items()
+	var slots: Array = []
+	
+	for item in items:
+		# Get the item definition to access the proper icon
+		var item_data = ItemDatabase.get_item(item["id"])
+		var item_icon = load("res://icon.svg")  # Default fallback icon
+		if not item_data.is_empty():
+			var icon_path = item_data.get("icon_path", "")
+			if not icon_path.is_empty():
+				var loaded_icon = load(icon_path)
+				if loaded_icon != null:
+					item_icon = loaded_icon
+		
+		var slot_data: Dictionary = {
+			"id": item["id"],
+			"name": item["display_name"],
+			"quantity": item["quantity"],
+			"icon": item_icon,
+			"tooltip": build_tooltip(item),
+			"payload": {
+				"item_id": item["id"],
+				"quantity": item["quantity"]
+			}
+		}
+		slots.append(slot_data)
+	
+	# Add some empty slots to fill the grid
+	var empty_slots_needed = capacity - slots.size()
+	for i in range(empty_slots_needed):
+		slots.append({
+			"id": "empty_%d" % i,
+			"name": "",
+			"quantity": 0,
+			"icon": null,
+			"state": "disabled"
+		})
+	
+	return {
+		StringName("title"): {
+			StringName("fallback"): "Inventory (%d/%d)" % [_items.size(), capacity]
+		},
+		StringName("columns"): columns,
+		StringName("slots"): slots
+	}

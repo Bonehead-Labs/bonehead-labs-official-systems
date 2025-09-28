@@ -33,7 +33,7 @@ func _exit_tree() -> void:
 			_inventory.template_event.disconnect(_on_template_event)
 		_inventory.queue_free()
 
-func _input(event: InputEvent) -> void:
+func _input(_event: InputEvent) -> void:
 	if Input.is_action_just_pressed("inventory"):
 		_toggle_inventory()
 
@@ -125,76 +125,8 @@ func _spawn_template() -> void:
 	_inventory.template_id = StringName("inventory_template_demo")
 	_inventory.template_event.connect(_on_template_event)
 	_template_host.add_child(_inventory)
-	_inventory.apply_content(_build_inventory_content())
+	_inventory.apply_content(_inventory_lite.build_ui_content(4))
 
-func _build_inventory_content() -> Dictionary:
-	var items = _inventory_lite.list_items()
-	var slots: Array = []
-	
-	for item in items:
-		# Get the item definition to access the proper icon
-		var item_data = ItemDatabase.get_item(item["id"])
-		var item_icon = load("res://icon.svg")  # Default fallback icon
-		if not item_data.is_empty():
-			var icon_path = item_data.get("icon_path", "")
-			if not icon_path.is_empty():
-				var loaded_icon = load(icon_path)
-				if loaded_icon != null:
-					item_icon = loaded_icon
-		
-		var slot_data: Dictionary = {
-			"id": item["id"],
-			"name": item["display_name"],
-			"quantity": item["quantity"],
-			"icon": item_icon,
-			"tooltip": _build_tooltip(item),
-			"payload": {
-				"item_id": item["id"],
-				"quantity": item["quantity"]
-			}
-		}
-		slots.append(slot_data)
-	
-	# Add some empty slots to fill the grid
-	var empty_slots_needed = 20 - slots.size()
-	for i in range(empty_slots_needed):
-		slots.append({
-			"id": "empty_%d" % i,
-			"name": "",
-			"quantity": 0,
-			"icon": null,
-			"state": "disabled"
-		})
-	
-	return {
-		StringName("title"): {
-			StringName("fallback"): "Inventory (%d/%d)" % [_inventory_lite._items.size(), _inventory_lite.capacity]
-		},
-		StringName("columns"): 4,  # 4 columns for better grid layout
-		StringName("slots"): slots
-	}
-
-func _build_tooltip(item: Dictionary) -> Dictionary:
-	# Get additional info from JSON data for richer tooltip
-	var item_data = ItemDatabase.get_item(item["id"])
-	var tooltip = "%s\nQuantity: %d" % [item["display_name"], item["quantity"]]
-	
-	if not item_data.is_empty():
-		var description = item_data.get("description", "")
-		if not description.is_empty():
-			tooltip += "\n\n" + description
-		
-		var tags = item_data.get("tags", [])
-		if not tags.is_empty():
-			tooltip += "\n\nTags: " + ", ".join(tags)
-		
-		var rarity = item_data.get("rarity", "common")
-		if rarity != "common":
-			tooltip += "\nRarity: " + rarity.capitalize()
-	
-	return {
-		StringName("fallback"): tooltip
-	}
 
 func _on_template_event(event_id: StringName, payload: Dictionary) -> void:
 	_append_log("%s -> %s" % [String(event_id), JSON.stringify(payload)])
@@ -211,12 +143,12 @@ func _on_template_event(event_id: StringName, payload: Dictionary) -> void:
 
 func _on_inventory_changed() -> void:
 	if _inventory != null:
-		_inventory.apply_content(_build_inventory_content())
+		_inventory.apply_content(_inventory_lite.build_ui_content(4))
 
 func _on_refresh_requested() -> void:
 	if _inventory == null:
 		return
-	_inventory.apply_content(_build_inventory_content())
+	_inventory.apply_content(_inventory_lite.build_ui_content(4))
 	_append_log("Inventory refreshed via outer button.")
 
 func _append_log(line: String) -> void:
