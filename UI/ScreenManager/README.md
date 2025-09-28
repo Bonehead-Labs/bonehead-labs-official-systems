@@ -7,13 +7,15 @@
 1. Add `res://UI/ScreenManager/UIScreenManager.gd` to a UI root (e.g., HUD or menu scene).
 2. Register screens via `register_screen(id: StringName, scene: PackedScene)`.
 3. Optionally assign `transition_player_path` and `transition_library` (shared with `SceneFlow`).
-4. Autoloads required:
+4. Register reusable templates with `register_template(id, scene)` and push them using `push_template` with a content dictionary.
+5. Autoloads required:
    - `ThemeService` (for themed controls)
    - `ThemeLocalization` (for localization helpers when screens rely on tokens)
 
 ## API
 
 - `push_screen(id, context)`
+- `push_template(template_ref, content, context)`
 - `replace_screen(id, context)`
 - `pop_screen()`
 - `clear_screens()`

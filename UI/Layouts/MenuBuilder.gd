@@ -3,6 +3,11 @@ extends Node
 
 ## MenuBuilder composes reusable UI shells from dictionary-based menu schemas.
 ##
+## [b]Deprecated:[/b] Replaced by the template system under `UI/Templates`. Use
+## `SettingsTemplate.tscn`, `DialogTemplate.tscn`, and related templates instead
+## of runtime schema construction. MenuBuilder remains temporarily for
+## backwards compatibility but will be removed in a future milestone.
+##
 ## Schemas describe the shell scene, sections, controls, and action bindings.
 ## Each control is instantiated through WidgetFactory helpers to enforce theme
 ## consistency. Actions connect to exported callables, and the builder performs
@@ -50,6 +55,9 @@ var _last_error: String = ""
 var _actions_config: Dictionary = {}
 var _control_registry: Dictionary = {}
 var _active_callbacks: Dictionary = {}
+
+func _init() -> void:
+    push_warning("MenuBuilder is deprecated; migrate to template-based UI scenes under UI/Templates.")
 
 ## Build a menu hierarchy from a validated schema.
 ##

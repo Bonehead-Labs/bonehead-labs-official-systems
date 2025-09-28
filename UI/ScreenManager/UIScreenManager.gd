@@ -12,7 +12,10 @@ signal transition_finished(id: StringName, metadata: Dictionary)
 @export var transition_player_path: NodePath
 @export var transition_library: FlowTransitionLibrary
 
+const DEFAULT_TEMPLATE_ID_PREFIX: String = "template_"
+
 var _screens: Dictionary[StringName, PackedScene] = {}
+var _templates: Dictionary[StringName, PackedScene] = {}
 var _stack: Array[ScreenEntry] = []
 var _transition_player: Node = null
 var _pending_transition_id: StringName = StringName()
@@ -49,6 +52,35 @@ func register_screen(id: StringName, scene: PackedScene) -> void:
         push_warning("UIScreenManager.register_screen: scene is null for id %s" % id)
         return
     _screens[id] = scene
+
+## Register a reusable UI template
+## 
+## Templates are pre-built scenes extending `_UITemplate` and populated via
+## `apply_content`. They can be pushed with `push_template` using the registry id.
+## 
+## [b]id:[/b] Unique identifier for the template
+## [b]scene:[/b] PackedScene for the template root
+func register_template(id: StringName, scene: PackedScene) -> void:
+    if scene == null:
+        push_warning("UIScreenManager.register_template: scene is null for id %s" % id)
+        return
+    _templates[id] = scene
+
+## Unregister a template scene
+## 
+## Removes a template from the registry so it can no longer be pushed.
+## 
+## [b]id:[/b] Template identifier to remove
+func unregister_template(id: StringName) -> void:
+    _templates.erase(id)
+
+## Check if a template is registered
+## 
+## [b]id:[/b] Template identifier to check
+## 
+## [b]Returns:[/b] true when the template exists in the registry
+func has_template(id: StringName) -> bool:
+    return _templates.has(id)
 
 ## Unregister a screen scene
 ## 
@@ -106,16 +138,64 @@ func push_screen(id: StringName, context: Dictionary[StringName, Variant] = _emp
         instance.queue_free()
         return ERR_INVALID_DATA
         
-    var entry: ScreenEntry = ScreenEntry.new(id, instance, _duplicate_context(context))
-    _perform_exit_transition(_peek_entry())
-    add_child(instance)
-    instance.visible = false
-    _stack.append(entry)
-    _activate_entry(entry)
-    screen_pushed.emit(id)
-    _publish_event(EventTopics.UI_SCREEN_PUSHED, id)
-    _emit_stack_change()
-    return OK
+    return _push_control_instance(id, instance as Control, context)
+
+## Push a template control onto the navigation stack
+## 
+## Templates are pre-authored scenes derived from `_UITemplate`. They can be
+## registered via `register_template` or supplied as PackedScenes or resource
+## paths. The template receives `apply_content` before activation and emits
+## `template_event` for user interactions.
+## 
+## [b]template_ref:[/b] Template id, PackedScene, or scene path string
+## [b]content:[/b] Dictionary forwarded to `apply_content`
+## [b]context:[/b] Optional navigation context data
+## 
+## [b]Returns:[/b] OK when successfully pushed, otherwise an Error code
+## 
+## [b]Usage:[/b]
+## [codeblock]
+## var template_data := {
+##     StringName("title"): {"fallback": "Settings"},
+##     StringName("sections"): [
+##         {
+##             "id": "audio",
+##             "title": {"fallback": "Audio"},
+##             "controls": [
+##                 {"type": "slider", "id": "music", "value": 0.6}
+##             ]
+##         }
+##     ]
+## }
+## screen_manager.register_template(StringName("settings"), preload("res://UI/Templates/SettingsTemplate.tscn"))
+## screen_manager.push_template(StringName("settings"), template_data)
+## [/codeblock]
+func push_template(template_ref: Variant, content: Dictionary = {}, context: Dictionary[StringName, Variant] = _empty_context()) -> Error:
+    var template_scene: PackedScene = _resolve_template_scene(template_ref)
+    if template_scene == null:
+        return ERR_DOES_NOT_EXIST
+
+    var instance: Node = template_scene.instantiate()
+    if not (instance is Control):
+        instance.queue_free()
+        return ERR_INVALID_DATA
+
+    var template_control: _UITemplate = instance as _UITemplate
+    var template_id: StringName = _resolve_template_id(template_ref, template_control, context)
+    if template_control != null:
+        if template_id != StringName():
+            template_control.template_id = template_id
+        template_control.apply_content(content.duplicate(true))
+
+    var entry_context: Dictionary[StringName, Variant] = _duplicate_context(context)
+    if template_id == StringName():
+        template_id = _generate_template_id()
+    entry_context[StringName("template_id")] = template_id
+    entry_context[StringName("template_ref")] = _template_ref_to_string(template_ref)
+    entry_context[StringName("template_content")] = content.duplicate(true)
+
+    (instance as Control).name = String(template_id)
+    return _push_control_instance(template_id, instance as Control, entry_context)
 
 ## Replace the current screen with a new one
 ## 
@@ -218,6 +298,20 @@ func clear_screens() -> void:
 func peek_screen() -> StringName:
     var entry: ScreenEntry = _peek_entry()
     return entry.id if entry else StringName()
+
+func _push_control_instance(id: StringName, control: Control, context: Dictionary[StringName, Variant]) -> Error:
+    if control == null:
+        return ERR_INVALID_DATA
+    var entry: ScreenEntry = ScreenEntry.new(id, control, _duplicate_context(context))
+    _perform_exit_transition(_peek_entry())
+    add_child(control)
+    control.visible = false
+    _stack.append(entry)
+    _activate_entry(entry)
+    screen_pushed.emit(id)
+    _publish_event(EventTopics.UI_SCREEN_PUSHED, id)
+    _emit_stack_change()
+    return OK
 
 ## Activate a screen entry
 ## 
@@ -347,6 +441,76 @@ func _publish_event(topic: StringName, id: StringName) -> void:
 func _call_screen_method(node: Node, method: StringName, data: Dictionary[StringName, Variant]) -> void:
     if node.has_method(method):
         node.call(method, data)
+
+func _stack_has_id(target: StringName) -> bool:
+    for entry in _stack:
+        if entry.id == target:
+            return true
+    return false
+
+func _resolve_template_scene(template_ref: Variant) -> PackedScene:
+    if template_ref is PackedScene:
+        return template_ref as PackedScene
+    if template_ref is StringName:
+        var id: StringName = template_ref as StringName
+        if _templates.has(id):
+            return _templates[id]
+        var path_candidate: String = String(id)
+        if ResourceLoader.exists(path_candidate, "PackedScene"):
+            var candidate_resource: Resource = ResourceLoader.load(path_candidate)
+            if candidate_resource is PackedScene:
+                return candidate_resource as PackedScene
+    if template_ref is String:
+        var text: String = template_ref
+        var key: StringName = StringName(text)
+        if _templates.has(key):
+            return _templates[key]
+        if ResourceLoader.exists(text, "PackedScene"):
+            var resource_path: Resource = ResourceLoader.load(text)
+            if resource_path is PackedScene:
+                return resource_path as PackedScene
+    return null
+
+func _resolve_template_id(template_ref: Variant, template_control: _UITemplate, context: Dictionary[StringName, Variant]) -> StringName:
+    if context.has(StringName("template_id")):
+        var ctx_id: StringName = _value_to_string_name(context[StringName("template_id")])
+        if ctx_id != StringName():
+            return ctx_id
+    if template_control != null and template_control.template_id != StringName():
+        return template_control.template_id
+    var from_ref: StringName = _value_to_string_name(template_ref)
+    if from_ref != StringName():
+        return from_ref
+    return StringName()
+
+func _generate_template_id() -> StringName:
+    var attempt: int = 0
+    while attempt < 8:
+        var candidate: StringName = StringName("%s%d" % [DEFAULT_TEMPLATE_ID_PREFIX, Time.get_ticks_msec() + attempt])
+        if not _stack_has_id(candidate):
+            return candidate
+        attempt += 1
+    return StringName("%s%d" % [DEFAULT_TEMPLATE_ID_PREFIX, randi()])
+
+func _template_ref_to_string(template_ref: Variant) -> String:
+    if template_ref is String:
+        return template_ref
+    if template_ref is StringName:
+        return String(template_ref)
+    if template_ref is PackedScene:
+        var packed: PackedScene = template_ref as PackedScene
+        return packed.resource_path
+    return ""
+
+func _value_to_string_name(value: Variant) -> StringName:
+    if value is StringName:
+        return value as StringName
+    if value is String:
+        var text: String = value
+        if text.is_empty():
+            return StringName()
+        return StringName(text)
+    return StringName()
 
 ## Duplicate a context dictionary
 ## 

@@ -27,7 +27,7 @@ All functions are strongly typed and return `Error` codes when appropriate.
 - `has_pending_load() -> bool`
   - Returns `true` when FlowManager is processing an asynchronous load.
 - `configure_loading_screen(scene: PackedScene, parent_path: NodePath = NodePath()) -> void`
-  - Registers a loading screen scene (must extend `FlowLoadingScreen`) and optional parent attachment path.
+  - Registers a loading screen scene (must extend `FlowLoadingScreen`) and optional parent attachment path. UI templates (e.g. `LoadingScreenTemplate.tscn`) can be wrapped in a simple adapter that forwards progress updates.
 - `clear_loading_screen() -> void`
   - Removes previously configured loading screen data and frees any instantiated instance.
 - `configure_transition_library(library: FlowTransitionLibrary, player_scene: PackedScene) -> void`

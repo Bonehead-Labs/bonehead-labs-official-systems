@@ -22,6 +22,7 @@ const UI_MODAL_OPEN           : StringName = &"ui/modal_open"            # {id}
 const UI_MODAL_CLOSE          : StringName = &"ui/modal_close"           # {id}
 const UI_SCREEN_PUSHED        : StringName = &"ui/screen_pushed"         # {id}
 const UI_SCREEN_POPPED        : StringName = &"ui/screen_popped"         # {id}
+const UI_TEMPLATE_EVENT       : StringName = &"ui/template_event"        # {template_id, event_id, payload}
 const UI_HUD_SHOW             : StringName = &"ui/hud_show"              # {}
 const UI_HUD_HIDE             : StringName = &"ui/hud_hide"              # {}
 const UI_OBJECTIVE_UPDATE     : StringName = &"ui/objective_update"      # {text, state?}

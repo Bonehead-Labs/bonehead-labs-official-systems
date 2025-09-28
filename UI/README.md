@@ -72,23 +72,14 @@ panel_shell.set_body(content)
 - `Example_Scenes/EventBus/EventBusDemo.gd` can swap its hand-built panel for `ScrollableLogShell.tscn` while using `WidgetFactory` buttons/labels. The log shell already exposes `append_entry` and accepts additional header controls via `set_header`.
 - Existing UI overlays should add required autoloads, instance the shell scenes, and feed content through the slot APIs rather than creating raw `PanelContainer`/`VBoxContainer` nodes.
 
-### Menu Builder
+### Template System
 
-- `_MenuBuilder` (see `res://UI/Layouts/MenuBuilder.gd`) turns schema dictionaries into interactive menus. The example config lives at `res://UI/Layouts/menu_schema.example.gd` and mirrors the required keys.
-- Schemas define `shell_scene`, optional `shell.header`/`shell.footer`, `sections[].controls[]`, and `actions`. `WidgetFactory` names (`button`, `toggle`, `label`, `slider`, `vbox`, `hbox`, `panel`) are used via the `factory` field.
-- Call `validate_config(schema)` during authoring, `validate_bindings(schema)` after wiring `action_callbacks`, then `build_menu(schema)` to receive the shell control. Errors are surfaced through `push_error` with dependency hints when autoloads are missing.
-- Example:
-
-```gdscript
-var builder := _MenuBuilder.new()
-builder.action_callbacks = {
-    StringName("apply_changes"): Callable(self, "_on_apply"),
-    StringName("close_menu"): Callable(self, "_on_close")
-}
-
-var menu := builder.build_menu(load("res://UI/Layouts/menu_schema.example.gd").MENU_SCHEMA)
-add_child(menu)
-```
+- `UITemplate.gd` (see `res://UI/Templates/UITemplate.gd`) provides a base class for scene-authored templates that expose `apply_content` and publish `template_event`.
+- `Example_Scenes/UI/TemplateShowcase.tscn` instantiates `DialogTemplate` directly, applies content data, and logs template events so you can see the new workflow with minimal setup.
+- Templates are data-driven: pass dictionaries for text tokens, slider ranges, toggle state, textures, and action payloads. `UITemplateDataBinder` handles conversion and WidgetFactory integration.
+- Register templates with `UIScreenManager.register_template(id, preload("template.tscn"))` and activate them using `push_template(id, content_dictionary)`.
+- Available templates: Dialog, Settings, Inventory, List, HUD overlay, and Loading screen. See `res://UI/Templates/README.md` for binding examples and recommended payload shapes.
+- `MenuBuilder` remains for legacy schemas but is deprecated; prefer converting to templates for new UI.
 
 ### Integration Checklist
 

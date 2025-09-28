@@ -24,9 +24,7 @@
 ## Milestone 4 – Integration & Showcase
 - [ ] Wire `UIScreenManager` to accept config-driven menus (e.g., `push_menu(config_dict)`) while preserving existing APIs and validating autoload availability before use.
 - [ ] Build an `Example_Scenes/UI/ConfigMenuDemo` scene proving end-to-end setup (Theme services, MenuBuilder, ScreenManager, EventBus interactions).
-- [ ] Provide CI-friendly scripts or docs ensuring demos can run headless (`Engine.is_editor_hint()` guards for visual components).
-- [ ] Add final documentation updates: roadmap, FAQ, and references to automation scripts; mirror tone/structure of solid modules like AudioService/EventBus.
-- [ ] Ensure all new public APIs ship with GUT coverage and docstrings; include verification checklist before closeout.
+
 
 ## Ongoing Quality Gates
 - Mirror AGENTS.md: keep new autoload references prefixed with `_` internally, type every variable, and avoid touching `.import` or unrelated settings.

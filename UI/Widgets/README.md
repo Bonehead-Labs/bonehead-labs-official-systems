@@ -19,3 +19,5 @@ add_child(button)
 ```
 
 All widgets respond to `ThemeService.theme_changed` (triggered by token swaps or high-contrast toggles) and update their appearance automatically.
+
+The template system (`res://UI/Templates/`) builds on these controls. Template scripts call `WidgetFactory` when generating dynamic content (list entries, settings controls, inventory slots), ensuring developer-authored templates inherit the same theming and accessibility defaults.

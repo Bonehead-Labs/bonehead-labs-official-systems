@@ -1,0 +1,38 @@
+{
+	"sword_iron": {
+		"id": "sword_iron",
+		"display_name": "Iron Sword",
+		"description": "A sturdy iron sword forged by skilled blacksmiths. Reliable and well-balanced.",
+		"rarity": "common",
+		"tags": ["weapon", "melee", "sword"],
+		"max_stack": 1,
+		"icon_path": "res://icon.svg"
+	},
+	"potion_health": {
+		"id": "potion_health",
+		"display_name": "Health Potion",
+		"description": "A magical potion that restores health when consumed. Smells like cherries.",
+		"rarity": "common",
+		"tags": ["consumable", "potion", "healing"],
+		"max_stack": 99,
+		"icon_path": "res://icon.svg"
+	},
+	"gem_ruby": {
+		"id": "gem_ruby",
+		"display_name": "Ruby Gem",
+		"description": "A precious red gemstone that sparkles in the light. Valuable and beautiful.",
+		"rarity": "rare",
+		"tags": ["gem", "valuable", "crafting"],
+		"max_stack": 50,
+		"icon_path": "res://icon.svg"
+	},
+	"arrow_wooden": {
+		"id": "arrow_wooden",
+		"display_name": "Wooden Arrow",
+		"description": "A simple wooden arrow with a sharp metal tip. Basic but effective.",
+		"rarity": "common",
+		"tags": ["ammunition", "ranged", "arrow"],
+		"max_stack": 99,
+		"icon_path": "res://icon.svg"
+	}
+}

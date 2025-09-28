@@ -2,6 +2,9 @@ extends Resource
 
 ## Example menu schema demonstrating MenuBuilder fields.
 ##
+## [b]Deprecated:[/b] MenuBuilder is superseded by template-driven UI scenes.
+## Convert schemas to template data dictionaries (see `UI/Templates/README.md`).
+##
 ## [b]Usage:[/b]
 ## [codeblock]
 ## var builder := _MenuBuilder.new()

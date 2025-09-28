@@ -1,8 +1,8 @@
-
+extends Node
 # Per-project list of actions/contexts/axes. Change this per game.
 const ACTIONS := [
     "move_left", "move_right", "move_up", "move_down",
-    "jump", "pause", "interact", "attack",
+    "jump", "pause", "interact", "attack", "inventory",
     "debug_toggle_inspector",
     "ui_accept", "ui_cancel"
 ]
@@ -10,7 +10,7 @@ const ACTIONS := [
 const CONTEXTS := {                      # action groups you can toggle
     "gameplay": [
         "move_left","move_right","move_up","move_down",
-        "jump","pause","interact","attack",
+        "jump","pause","interact","attack","inventory",
         "debug_toggle_inspector"
     ],
     "ui":       ["ui_accept","ui_cancel"]
