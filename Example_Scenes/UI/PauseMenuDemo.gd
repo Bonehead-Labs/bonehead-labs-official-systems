@@ -12,6 +12,8 @@ var _settings_dialog: _UITemplate
 var _is_paused: bool = false
 var _game_scene: Node
 var _dialog_host: CenterContainer
+var _ui_layer: CanvasLayer
+var _overlay: Control
 
 # Volume mapping for sliders (0..1) <-> decibels using perceptual mapping
 const VOL_DB_MIN: float = -60.0
@@ -22,18 +24,24 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_WHEN_PAUSED
 	# Ensure this Control fills the viewport so child dialogs have space
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	
+	# Don't intercept mouse input when not visible
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	# Create a canvas-layered, centered host for dialogs
-	var ui_layer: CanvasLayer = CanvasLayer.new()
-	add_child(ui_layer)
-	var overlay: Control = Control.new()
-	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	ui_layer.add_child(overlay)
+	_ui_layer = CanvasLayer.new()
+	add_child(_ui_layer)
+	_overlay = Control.new()
+	_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Overlay must not block input when the menu is hidden
+	_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_overlay.visible = false
+	_ui_layer.add_child(_overlay)
 	_dialog_host = CenterContainer.new()
 	_dialog_host.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_dialog_host.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_dialog_host.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	overlay.add_child(_dialog_host)
+	_overlay.add_child(_dialog_host)
 	
 	# Connect to input service for pause input
 	if InputService:
@@ -61,6 +69,11 @@ func pause_game() -> void:
 	_is_paused = true
 	get_tree().paused = true
 	
+	# Show overlay and allow it to receive mouse input while paused
+	if _overlay:
+		_overlay.visible = true
+		_overlay.mouse_filter = Control.MOUSE_FILTER_PASS
+	
 	# Show pause menu
 	_show_pause_menu()
 	
@@ -73,6 +86,11 @@ func resume_game() -> void:
 	
 	_is_paused = false
 	get_tree().paused = false
+	
+	# Hide overlay and stop intercepting input when not paused
+	if _overlay:
+		_overlay.visible = false
+		_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	
 	# Hide all dialogs
 	_hide_all_dialogs()

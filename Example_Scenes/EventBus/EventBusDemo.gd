@@ -53,6 +53,8 @@ func _build_ui() -> void:
 	panel.offset_left = 16
 	panel.offset_top = 16
 	panel.custom_minimum_size = PANEL_SIZE
+	# Allow the panel to receive mouse input
+	panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	add_child(panel)
 
 	var layout := VBoxContainer.new()

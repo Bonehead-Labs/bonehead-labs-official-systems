@@ -5,6 +5,7 @@ extends Node2D
 ## This script coordinates all the demo components in the sample level.
 
 @onready var _pause_menu: Control = $PauseMenuDemo
+@onready var _enemy_demo: Control = $EnemyDemo
 
 # Audio configuration
 const SAMPLE_AUDIO_PATH = "res://AudioService/sample-audio/"
@@ -23,6 +24,10 @@ func _ready() -> void:
 	_start_background_music()
 	
 	print("LevelDemo: Demo initialization complete!")
+
+## Get the enemy demo instance
+func get_enemy_demo() -> Control:
+	return _enemy_demo
 
 ## Initialize audio using AudioService bulk loading functionality
 func _initialize_audio() -> void:
