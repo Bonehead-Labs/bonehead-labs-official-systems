@@ -119,27 +119,20 @@ func is_attacking() -> bool:
 
 ## Play a random hit sound effect when attacking
 func _play_attack_sound() -> void:
-	# Find AudioDemo in the scene
-	var audio_demo = _find_audio_demo()
-	if audio_demo != null and audio_demo.has_method("play_random_hit"):
-		audio_demo.play_random_hit()
+	# Find LevelDemo in the scene (which now handles audio)
+	var level_demo = _find_level_demo()
+	if level_demo != null and level_demo.has_method("play_random_hit"):
+		level_demo.play_random_hit()
 		print("PlayerStateAttack: Played attack sound")
 	else:
-		print("PlayerStateAttack: No AudioDemo found for attack sound")
+		print("PlayerStateAttack: No LevelDemo found for attack sound")
 
-## Find AudioDemo in the scene
-func _find_audio_demo() -> Node:
-	# Look for AudioDemo in the scene tree
-	var audio_demo = Engine.get_main_loop().get_first_node_in_group("audio_demo")
-	if audio_demo != null and audio_demo.has_method("play_random_hit"):
-		return audio_demo
-	
-	# Search for AudioDemo in the scene
+## Find LevelDemo in the scene
+func _find_level_demo() -> Node:
+	# Look for LevelDemo in the scene tree
 	var root = Engine.get_main_loop().current_scene
 	if root != null:
-		audio_demo = _find_node_by_class(root, AudioDemo)
-		if audio_demo != null:
-			return audio_demo
+		return _find_node_by_class(root, LevelDemo)
 	
 	return null
 

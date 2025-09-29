@@ -120,10 +120,9 @@ func _show_pause_menu() -> void:
 func _show_settings_menu() -> void:
 	print("PauseMenuDemo: Creating simple test dialog...")
 	
-	# Get current volume values FIRST
-	var audio_demo = _find_audio_demo()
-	var master_db: float = audio_demo.get_master_volume() if audio_demo else 0.0
-	var music_db: float = audio_demo.get_music_volume() if audio_demo else 0.0
+	# Get current volume values directly from AudioService
+	var master_db: float = AudioService.get_master_volume()
+	var music_db: float = AudioService.get_music_volume()
 	var master_value: float = _db_to_slider(master_db)
 	var music_value: float = _db_to_slider(music_db)
 	
@@ -213,21 +212,16 @@ func _on_pause_dialog_event(event_id: StringName, _payload: Dictionary) -> void:
 func _on_settings_dialog_event(event_id: StringName, payload: Dictionary) -> void:
 	print("PauseMenuDemo: Settings dialog event: ", event_id, " payload: ", payload)
 	
-	var audio_demo = _find_audio_demo()
-	if audio_demo == null:
-		push_warning("PauseMenuDemo: No AudioDemo found for volume control")
-		return
-	
 	match event_id:
 		StringName("master_volume"):
 			var value: float = payload.get("value", 0.5)
 			var db: float = _slider_to_db(value)
-			audio_demo.set_master_volume(db)
+			AudioService.set_master_volume(db)
 			print("Master volume set to: ", db, " dB (", value, ")")
 		StringName("music_volume"):
 			var value: float = payload.get("value", 0.5)
 			var db: float = _slider_to_db(value)
-			audio_demo.set_music_volume(db)
+			AudioService.set_music_volume(db)
 			print("Music volume set to: ", db, " dB (", value, ")")
 		StringName("close"):
 			# Close settings, return to pause menu
@@ -264,32 +258,7 @@ func _on_input_action(action: StringName, edge: String, _device: int, _event: In
 			# No dialogs visible, toggle pause
 			toggle_pause()
 
-## Find AudioDemo in the scene
-func _find_audio_demo() -> Node:
-	var audio_demo = Engine.get_main_loop().get_first_node_in_group("audio_demo")
-	if audio_demo != null and audio_demo.has_method("get_master_volume"):
-		return audio_demo
-	
-	# Search for AudioDemo in the scene
-	var root = Engine.get_main_loop().current_scene
-	if root != null:
-		audio_demo = _find_node_by_class(root, AudioDemo)
-		if audio_demo != null:
-			return audio_demo
-	
-	return null
 
-## Recursively find a node of a specific class
-func _find_node_by_class(node: Node, target_class: GDScript) -> Node:
-	if node.get_script() == target_class:
-		return node
-	
-	for child in node.get_children():
-		var result = _find_node_by_class(child, target_class)
-		if result != null:
-			return result
-	
-	return null
 
 ## Check if game is paused
 func is_paused() -> bool:

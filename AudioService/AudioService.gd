@@ -163,6 +163,74 @@ func set_bus_mute(bus: StringName, mute: bool) -> void:
 func is_bus_mute(bus: StringName) -> bool:
     return _bus_mute.get(bus, false)
 
+# ───────────────────────────────────────────────────────────────────────────────
+# Convenience Methods for Common Operations
+# ───────────────────────────────────────────────────────────────────────────────
+
+## Get master volume
+func get_master_volume() -> float:
+    return get_bus_volume_db(BUS_MASTER)
+
+## Set master volume
+func set_master_volume(volume_db: float) -> void:
+    set_bus_volume_db(BUS_MASTER, volume_db)
+
+## Get music volume
+func get_music_volume() -> float:
+    return get_bus_volume_db(BUS_MUSIC)
+
+## Set music volume
+func set_music_volume(volume_db: float) -> void:
+    set_bus_volume_db(BUS_MUSIC, volume_db)
+
+## Get SFX volume
+func get_sfx_volume() -> float:
+    return get_bus_volume_db(BUS_SFX)
+
+## Set SFX volume
+func set_sfx_volume(volume_db: float) -> void:
+    set_bus_volume_db(BUS_SFX, volume_db)
+
+## Get UI volume
+func get_ui_volume() -> float:
+    return get_bus_volume_db(BUS_UI)
+
+## Set UI volume
+func set_ui_volume(volume_db: float) -> void:
+    set_bus_volume_db(BUS_UI, volume_db)
+
+## Check if master is muted
+func is_master_muted() -> bool:
+    return is_bus_mute(BUS_MASTER)
+
+## Set master mute state
+func set_master_mute(mute: bool) -> void:
+    set_bus_mute(BUS_MASTER, mute)
+
+## Check if music is muted
+func is_music_muted() -> bool:
+    return is_bus_mute(BUS_MUSIC)
+
+## Set music mute state
+func set_music_mute(mute: bool) -> void:
+    set_bus_mute(BUS_MUSIC, mute)
+
+## Check if SFX is muted
+func is_sfx_muted() -> bool:
+    return is_bus_mute(BUS_SFX)
+
+## Set SFX mute state
+func set_sfx_mute(mute: bool) -> void:
+    set_bus_mute(BUS_SFX, mute)
+
+## Check if UI is muted
+func is_ui_muted() -> bool:
+    return is_bus_mute(BUS_UI)
+
+## Set UI mute state
+func set_ui_mute(mute: bool) -> void:
+    set_bus_mute(BUS_UI, mute)
+
 func _apply_bus_volume(bus: StringName) -> void:
     if not _valid_bus(bus):
         return
@@ -181,6 +249,10 @@ func _apply_all_bus_mutes() -> void:
 # ───────────────────────────────────────────────────────────────────────────────
 # Sound Library
 # ───────────────────────────────────────────────────────────────────────────────
+
+# Initialization tracking
+var _is_initialized: bool = false
+var _initialization_callbacks: Array[Callable] = []
 
 ## Register a single sound definition
 ## 
@@ -219,6 +291,150 @@ func has_sound(id: StringName) -> bool:
 ## Return the raw registered entry for a sound id (or empty Dictionary)
 func get_sound(id: StringName) -> Dictionary:
     return _library.get(String(id), {})
+
+## Load and register multiple sounds from a directory
+## 
+## [b]directory_path:[/b] Path to directory containing audio files
+## [b]file_extensions:[/b] Array of file extensions to load (e.g., ["ogg", "wav", "mp3"])
+## [b]id_prefix:[/b] Optional prefix for generated sound IDs
+## [b]default_bus:[/b] Default bus for loaded sounds
+## [b]default_kind:[/b] Default kind tag for loaded sounds
+## [b]recursive:[/b] Whether to search subdirectories
+## @return: Dictionary mapping file paths to success/failure
+func load_sounds_from_directory(directory_path: String, file_extensions: Array[String] = ["ogg", "wav", "mp3"], id_prefix: String = "", default_bus: StringName = BUS_SFX, default_kind: String = "SFX", recursive: bool = false) -> Dictionary:
+    var results := {}
+    var dir := DirAccess.open(directory_path)
+    
+    if dir == null:
+        push_error("AudioService.load_sounds_from_directory: Cannot open directory: " + directory_path)
+        return results
+    
+    dir.list_dir_begin()
+    var file_name := dir.get_next()
+    
+    while file_name != "":
+        if file_name.begins_with("."):
+            file_name = dir.get_next()
+            continue
+            
+        var full_path := directory_path.path_join(file_name)
+        
+        if dir.current_is_dir() and recursive:
+            # Recursively load from subdirectory
+            var sub_results := load_sounds_from_directory(full_path, file_extensions, id_prefix + file_name + "_", default_bus, default_kind, recursive)
+            results.merge(sub_results)
+        elif not dir.current_is_dir():
+            # Check if file has a supported extension
+            var extension := file_name.get_extension().to_lower()
+            if extension in file_extensions:
+                var sound_id := id_prefix + file_name.get_basename()
+                var stream := load(full_path) as AudioStream
+                
+                if stream != null:
+                    register_sound(sound_id, stream, default_bus, default_kind)
+                    results[full_path] = true
+                    print("AudioService: Loaded sound '%s' from %s" % [sound_id, full_path])
+                else:
+                    results[full_path] = false
+                    push_error("AudioService: Failed to load audio file: " + full_path)
+        
+        file_name = dir.get_next()
+    
+    dir.list_dir_end()
+    return results
+
+## Load sounds from a configuration dictionary
+## 
+## [b]config:[/b] Dictionary with structure:
+## {
+##   "directory": "res://audio/",
+##   "sounds": {
+##     "music": {"file": "theme.ogg", "bus": "Music", "kind": "MUSIC"},
+##     "ui_click": {"file": "click.ogg", "bus": "UI", "kind": "UI"},
+##     "explosion": {"file": "explosion.ogg", "bus": "SFX", "kind": "SFX"}
+##   }
+## }
+func load_sounds_from_config(config: Dictionary) -> Dictionary:
+    var results := {}
+    
+    if not config.has("directory") or not config.has("sounds"):
+        push_error("AudioService.load_sounds_from_config: Invalid config structure")
+        return results
+    
+    var directory: String = config.directory
+    var sounds_config: Dictionary = config.sounds
+    
+    for sound_id in sounds_config.keys():
+        var sound_def: Dictionary = sounds_config[sound_id]
+        if not sound_def.has("file"):
+            push_error("AudioService.load_sounds_from_config: Missing 'file' for sound '%s'" % sound_id)
+            results[sound_id] = false
+            continue
+        
+        var file_path: String = directory.path_join(sound_def.file)
+        var stream := load(file_path) as AudioStream
+        
+        if stream != null:
+            var bus := StringName(sound_def.get("bus", BUS_SFX))
+            var kind: String = sound_def.get("kind", "SFX")
+            var meta: Dictionary = sound_def.get("meta", {})
+            
+            register_sound(sound_id, stream, bus, kind, meta)
+            results[sound_id] = true
+            print("AudioService: Loaded sound '%s' from %s" % [sound_id, file_path])
+        else:
+            push_error("AudioService: Failed to load audio file: " + file_path)
+            results[sound_id] = false
+    
+    return results
+
+## Play a random sound from a group of registered sounds
+## 
+## [b]sound_group:[/b] Array of sound IDs to choose from
+## [b]options:[/b] Options dictionary passed to play function
+## [b]play_function:[/b] Which play function to use ("sfx", "sfx_3d", "ui")
+func play_random_sound(sound_group: Array[StringName], options: Dictionary = {}, play_function: String = "sfx"):
+    if sound_group.is_empty():
+        push_warning("AudioService.play_random_sound: Empty sound group")
+        return null
+    
+    var random_id := sound_group[randi() % sound_group.size()]
+    
+    match play_function:
+        "sfx":
+            return play_sfx(random_id, options)
+        "sfx_3d":
+            return play_sfx_3d(random_id, options)
+        "ui":
+            return play_ui(random_id, options)
+        _:
+            push_warning("AudioService.play_random_sound: Unknown play function '%s'" % play_function)
+            return null
+
+## Check if AudioService has been initialized with sounds
+func is_initialized() -> bool:
+    return _is_initialized
+
+## Mark AudioService as initialized and call any pending callbacks
+func mark_initialized() -> void:
+    if _is_initialized:
+        return
+    
+    _is_initialized = true
+    print("AudioService: Initialization complete")
+    
+    # Call any pending initialization callbacks
+    for callback in _initialization_callbacks:
+        if callback.is_valid():
+            callback.call()
+    _initialization_callbacks.clear()
+
+## Add a callback to be called when AudioService is initialized
+func on_initialized(callback: Callable) -> void:
+    if _is_initialized:
+        callback.call()
+    else:
+        _initialization_callbacks.append(callback)
 
 # ───────────────────────────────────────────────────────────────────────────────
 # SFX Player Pools (2D / 3D / UI) – scaffolding
