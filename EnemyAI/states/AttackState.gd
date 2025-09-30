@@ -1,11 +1,11 @@
 class_name AttackState
 extends FSMState
 
-const EnemyBaseScript = preload("../EnemyBaseV2.gd")
+const EnemyBaseScript = preload("../BaseEnemy.gd")
 const EnemyConfigScript = preload("../EnemyConfig.gd")
 const AttackModuleScript = preload("../attacks/AttackModule.gd")
 
-var _enemy: EnemyBase
+var _enemy: EnemyBaseScript
 var _config: EnemyConfigScript
 var _attack: AttackModuleScript
 var _target: Node2D

@@ -1,6 +1,6 @@
 [gd_scene load_steps=9 format=3]
 
-[ext_resource type="Script" path="res://EnemyAI/EnemyBaseV2.gd" id="1_base"]
+[ext_resource type="Script" path="res://EnemyAI/BaseEnemy.gd" id="1_base"]
 [ext_resource type="Script" path="res://systems/fsm/StateMachine.gd" id="2_fsm"]
 [ext_resource type="Script" path="res://Combat/HealthComponent.gd" id="3_health"]
 [ext_resource type="Script" path="res://Combat/HurtboxComponent.gd" id="4_hurtbox"]

@@ -3,10 +3,10 @@ extends FSMState
 
 ## State for enemy chase behavior - pursues alert target.
 
-const EnemyBaseScript = preload("../EnemyBaseV2.gd")
+const EnemyBaseScript = preload("../BaseEnemy.gd")
 const EnemyConfigScript = preload("../EnemyConfig.gd")
 
-var _enemy: EnemyBase
+var _enemy: EnemyBaseScript
 var _config: EnemyConfigScript
 var _last_known_target_position: Vector2
 var _chase_timer: float = 0.0
@@ -20,7 +20,7 @@ func setup(state_machine: StateMachine, state_owner: Node, state_context: Dictio
     if not validate_context([&"enemy", &"config"]):
         return
     
-    _enemy = get_context_value(&"enemy", null, TYPE_OBJECT) as EnemyBase
+    _enemy = get_context_value(&"enemy", null, TYPE_OBJECT) as EnemyBaseScript
     _config = get_context_value(&"config", null, TYPE_OBJECT) as EnemyConfig
 
 func enter(payload: Dictionary[StringName, Variant] = {}) -> void:

@@ -1,4 +1,4 @@
-class_name EnemyBase
+class_name BaseEnemy
 extends CharacterBody2D
 
 ## Node-driven base enemy with FSM, health, hitbox, hurtbox and perception
@@ -201,5 +201,6 @@ func _is_player(body: Node2D) -> bool:
 	if body.has_method("player"):
 		return true
 	return String(body.name) == "Player"
+
 
 

@@ -3,10 +3,10 @@ extends FSMState
 
 ## State for enemy patrol behavior - moves between waypoints.
 
-const EnemyBaseScript = preload("../EnemyBaseV2.gd")
+const EnemyBaseScript = preload("../BaseEnemy.gd")
 const EnemyConfigScript = preload("../EnemyConfig.gd")
 
-var _enemy: EnemyBase
+var _enemy: EnemyBaseScript
 var _config: EnemyConfig
 var _waypoints: Array[Vector2] = []
 var _current_waypoint_index: int = 0
@@ -21,7 +21,7 @@ func setup(state_machine: StateMachine, state_owner: Node, state_context: Dictio
 	if not validate_context([&"enemy", &"config"]):
 		return
 	
-	_enemy = get_context_value(&"enemy", null, TYPE_OBJECT) as EnemyBase
+	_enemy = get_context_value(&"enemy", null, TYPE_OBJECT) as EnemyBaseScript
 	_config = get_context_value(&"config", null, TYPE_OBJECT) as EnemyConfigScript
 
 	if _config:

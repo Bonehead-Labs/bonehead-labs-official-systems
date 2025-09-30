@@ -3,10 +3,10 @@ extends FSMState
 
 ## Idle state for enemies - waits and watches for the player.
 
-const EnemyBaseScript = preload("../EnemyBaseV2.gd")
+const EnemyBaseScript = preload("../BaseEnemy.gd")
 const EnemyConfigScript = preload("../EnemyConfig.gd")
 
-var _enemy: EnemyBase
+var _enemy: EnemyBaseScript
 var _config: EnemyConfig
 var _idle_timer: float = 0.0
 var _idle_duration: float = 2.0  # How long to stay idle before patrolling
@@ -17,8 +17,8 @@ func setup(state_machine: StateMachine, state_owner: Node, state_context: Dictio
 	# Validate required context keys
 	if not validate_context([&"enemy", &"config"]):
 		return
-	
-	_enemy = get_context_value(&"enemy", null, TYPE_OBJECT) as EnemyBase
+
+	_enemy = get_context_value(&"enemy", null, TYPE_OBJECT) as EnemyBaseScript
 	_config = get_context_value(&"config", null, TYPE_OBJECT) as EnemyConfig
 
 func enter(_payload: Dictionary[StringName, Variant] = {}) -> void:

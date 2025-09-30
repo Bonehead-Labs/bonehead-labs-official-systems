@@ -1,6 +1,6 @@
 [gd_scene load_steps=6 format=3 uid="uid://bqx8vj2k3x4y5"]
 
-[ext_resource type="Script" uid="uid://dd86a4p8qroj1" path="res://EnemyAI/EnemyBase.gd" id="1_0x8vj2k"]
+[ext_resource type="Script" path="res://EnemyAI/BaseEnemy.gd" id="1_0x8vj2k"]
 [ext_resource type="Texture2D" uid="uid://cpevkofokkwdo" path="res://icon.svg" id="2_icon"]
 [ext_resource type="Script" path="res://Example_Scenes/SimpleChaseEnemy.gd" id="3_simple_chase_script"]
 
