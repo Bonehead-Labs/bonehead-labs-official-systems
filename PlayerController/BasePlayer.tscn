@@ -1,0 +1,38 @@
+[gd_scene load_steps=8 format=3 uid="uid://38u4fe2ahkl8"]
+
+[ext_resource type="Script" uid="uid://bvw4pjy0afk8i" path="res://PlayerController/BasePlayer.gd" id="1_base_player"]
+[ext_resource type="Script" uid="uid://c6poeldvjadm3" path="res://PlayerController/MovementConfig.gd" id="2_blkw4"]
+[ext_resource type="Script" uid="uid://dvanv42j3w4m" path="res://systems/fsm/StateMachine.gd" id="2_state_machine"]
+[ext_resource type="Script" uid="uid://divbrf64g8hv4" path="res://Combat/HealthComponent.gd" id="3_health"]
+[ext_resource type="Texture2D" uid="uid://cpevkofokkwdo" path="res://icon.svg" id="4_icon"]
+
+[sub_resource type="Resource" id="Resource_bn36t"]
+script = ExtResource("2_blkw4")
+movement_mode = 1
+max_speed = 500.0
+allow_jump = false
+allow_vertical_input = true
+metadata/_custom_type_script = "uid://c6poeldvjadm3"
+
+[sub_resource type="RectangleShape2D" id="1_body_shape"]
+size = Vector2(128, 130)
+
+[node name="Player" type="CharacterBody2D"]
+script = ExtResource("1_base_player")
+movement_config = SubResource("Resource_bn36t")
+state_machine_path = NodePath("StateMachine")
+
+[node name="Sprite2D" type="Sprite2D" parent="."]
+texture = ExtResource("4_icon")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
+position = Vector2(0, -1)
+shape = SubResource("1_body_shape")
+
+[node name="StateMachine" type="Node" parent="."]
+script = ExtResource("2_state_machine")
+initial_state = &"idle"
+
+[node name="HealthComponent" type="Node" parent="."]
+script = ExtResource("3_health")
+auto_register_with_save_service = false

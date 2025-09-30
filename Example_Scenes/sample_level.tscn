@@ -1,46 +1,16 @@
-[gd_scene load_steps=12 format=3 uid="uid://2m0f4o7sf663"]
+[gd_scene load_steps=7 format=3 uid="uid://2m0f4o7sf663"]
 
-[ext_resource type="Texture2D" uid="uid://cpevkofokkwdo" path="res://icon.svg" id="1_qwtrq"]
-[ext_resource type="Script" uid="uid://c6poeldvjadm3" path="res://PlayerController/MovementConfig.gd" id="2_26d5r"]
-[ext_resource type="Script" uid="uid://cpkauddtq4ljc" path="res://Example_Scenes/player.gd" id="2_player_script"]
-[ext_resource type="Script" uid="uid://dvanv42j3w4m" path="res://systems/fsm/StateMachine.gd" id="3_state_machine_script"]
+[ext_resource type="PackedScene" uid="uid://38u4fe2ahkl8" path="res://PlayerController/BasePlayer.tscn" id="2_base_player_scene"]
 [ext_resource type="Script" uid="uid://bl0gaxo4ibwbd" path="res://Example_Scenes/EventBus/EventBusDemo.gd" id="4_eventbus_demo_script"]
 [ext_resource type="Script" uid="uid://xcjq3y3j2wm8" path="res://Example_Scenes/LevelDemo.gd" id="5_level_demo_script"]
 [ext_resource type="Script" uid="uid://cn8qm5xy2rtcd" path="res://Example_Scenes/UI/PauseMenuDemo.gd" id="6_pause_menu_script"]
 [ext_resource type="Script" uid="uid://bw7360ty2y4dx" path="res://Example_Scenes/EnemyDemo.gd" id="7_enemy_demo_script"]
-
-[sub_resource type="Resource" id="Resource_ks73t"]
-script = ExtResource("2_26d5r")
-movement_mode = 1
-allow_vertical_input = true
-metadata/_custom_type_script = "uid://c6poeldvjadm3"
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_fe515"]
-size = Vector2(128, 130)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_ulhqe"]
 size = Vector2(1154, 30)
 
 [node name="Level" type="Node2D"]
 script = ExtResource("5_level_demo_script")
-
-[node name="Player" type="CharacterBody2D" parent="."]
-position = Vector2(572, 296)
-script = ExtResource("2_player_script")
-movement_config = SubResource("Resource_ks73t")
-state_machine_path = NodePath("StateMachine")
-
-[node name="playerSprite" type="Sprite2D" parent="Player"]
-texture = ExtResource("1_qwtrq")
-
-[node name="playerCollisionShape" type="CollisionShape2D" parent="Player"]
-position = Vector2(0, -1)
-shape = SubResource("RectangleShape2D_fe515")
-
-[node name="StateMachine" type="Node" parent="Player"]
-script = ExtResource("3_state_machine_script")
-initial_state = &"idle"
-metadata/_custom_type_script = "uid://dvanv42j3w4m"
 
 [node name="Floor" type="StaticBody2D" parent="."]
 
@@ -101,3 +71,6 @@ offset_bottom = 203.0
 grow_horizontal = 0
 grow_vertical = 2
 script = ExtResource("6_pause_menu_script")
+
+[node name="Player" parent="." instance=ExtResource("2_base_player_scene")]
+position = Vector2(571, 248)

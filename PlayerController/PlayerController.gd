@@ -47,7 +47,7 @@ var _state_machine: StateMachine
 var _input_service_connected: bool = false
 var _axis_values: Dictionary[StringName, float] = {}
 var _interaction_detector: InteractionDetectorScript = null
-var _abilities: Dictionary[StringName, Node] = {}
+var _abilities: Dictionary[StringName, PlayerAbility] = {}
 var _health_component: HealthComponentScript = null
 var _warned_missing_input_service: bool = false
 
@@ -63,7 +63,7 @@ func _ready() -> void:
     _was_on_floor = is_on_floor()
 
 func _process(delta: float) -> void:
-    if _state_machine:
+    if _state_machine and not _is_any_ability_overriding_motion():
         _state_machine.update_state(delta)
 
     # Update active abilities
@@ -75,11 +75,18 @@ func _physics_process(delta: float) -> void:
         return
     if _state_machine:
         _refresh_state_context()
-        _state_machine.physics_update_state(delta)
+        if not _is_any_ability_overriding_motion():
+            _state_machine.physics_update_state(delta)
     velocity = _velocity
     move_and_slide()
     _velocity = velocity
     _update_after_physics(delta)
+
+func _is_any_ability_overriding_motion() -> bool:
+    var dash: PlayerAbility = get_ability(StringName("dash"))
+    if dash and dash.has_method("is_dashing") and dash.is_dashing():
+        return true
+    return false
 
 ## Teleport the player to a spawn position and emit analytics hooks
 ## 
@@ -386,7 +393,7 @@ func _on_interaction_available_changed(available: bool) -> void:
 ## var dash_ability = preload("res://abilities/DashAbility.gd").new()
 ## player_controller.register_ability("dash", dash_ability)
 ## [/codeblock]
-func register_ability(ability_id: StringName, ability: Node) -> void:
+func register_ability(ability_id: StringName, ability: PlayerAbility) -> void:
     if _abilities.has(ability_id):
         push_warning("Ability '%s' is already registered" % ability_id)
         return
@@ -415,7 +422,7 @@ func unregister_ability(ability_id: StringName) -> void:
         push_warning("Ability '%s' is not registered" % ability_id)
         return
 
-    var ability: Node = _abilities[ability_id]
+    var ability: PlayerAbility = _abilities[ability_id]
     _abilities.erase(ability_id)
     
     # Deactivate the ability before removing
@@ -439,8 +446,8 @@ func unregister_ability(ability_id: StringName) -> void:
 ## if dash_ability:
 ##     dash_ability.activate()
 ## [/codeblock]
-func get_ability(ability_id: StringName) -> Node:
-    return _abilities.get(ability_id, null)
+func get_ability(ability_id: StringName) -> PlayerAbility:
+    return _abilities.get(ability_id, null) as PlayerAbility
 
 ## Activate an ability
 ## 
@@ -454,7 +461,7 @@ func get_ability(ability_id: StringName) -> Node:
 ## player_controller.activate_ability("dash")
 ## [/codeblock]
 func activate_ability(ability_id: StringName) -> void:
-    var ability: Node = get_ability(ability_id)
+    var ability: PlayerAbility = get_ability(ability_id)
     if ability:
         ability.activate()
 
@@ -470,7 +477,7 @@ func activate_ability(ability_id: StringName) -> void:
 ## player_controller.deactivate_ability("shield")
 ## [/codeblock]
 func deactivate_ability(ability_id: StringName) -> void:
-    var ability: Node = get_ability(ability_id)
+    var ability: PlayerAbility = get_ability(ability_id)
     if ability:
         ability.deactivate()
 
@@ -799,7 +806,7 @@ func get_save_priority() -> int:
 func _get_active_abilities_data() -> Dictionary:
     var data: Dictionary = {}
     for ability_id in _abilities:
-        var ability: Node = _abilities[ability_id]
+        var ability: PlayerAbility = _abilities[ability_id]
         if ability.is_active():
             data[ability_id] = {
                 "active": true,
@@ -815,7 +822,7 @@ func _get_active_abilities_data() -> Dictionary:
 func _load_abilities_data(abilities_data: Dictionary) -> void:
     for ability_id in abilities_data:
         var ability_data: Dictionary = abilities_data[ability_id]
-        var ability: Node = get_ability(StringName(ability_id))
+        var ability: PlayerAbility = get_ability(StringName(ability_id))
         if ability:
             var was_active: bool = ability_data.get("active", false)
             if was_active:
@@ -1119,6 +1126,14 @@ func _on_eventbus_action(payload: Dictionary) -> void:
     # Handle interact input
     if action == movement_config.interact_action and edge == "pressed":
         interact()
+
+    # Forward dash to abilities explicitly for visibility
+    if action == StringName("dash") and edge == "pressed":
+        if EventBus and EventBus.has_method("pub"):
+            EventBus.call("pub", EventTopics.DEBUG_LOG, {"msg": "PlayerController dash event", "level": "INFO", "source": "PlayerController"})
+        var dash: PlayerAbility = get_ability(StringName("dash"))
+        if dash:
+            dash.handle_input_action(StringName("dash"), "pressed", device, null)
     
     # Forward to abilities
     for ability in _abilities.values():
@@ -1144,6 +1159,13 @@ func _on_action_event(action: StringName, edge: String, device: int, event: Inpu
     # Handle interact input
     if action == movement_config.interact_action and edge == "pressed":
         interact()
+
+    if action == StringName("dash") and edge == "pressed":
+        if EventBus and EventBus.has_method("pub"):
+            EventBus.call("pub", EventTopics.DEBUG_LOG, {"msg": "PlayerController dash (InputService)", "level": "INFO", "source": "PlayerController"})
+        var dash2: PlayerAbility = get_ability(StringName("dash"))
+        if dash2:
+            dash2.handle_input_action(StringName("dash"), "pressed", device, event)
 
     # Forward to abilities
     for ability in _abilities.values():
