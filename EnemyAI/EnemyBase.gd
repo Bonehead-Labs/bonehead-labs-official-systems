@@ -1,4 +1,4 @@
-class_name EnemyBase
+class_name _EnemyBase
 extends CharacterBody2D
 
 ## Base class for 2D enemies leveraging the shared FSM system.

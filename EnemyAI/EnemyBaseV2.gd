@@ -1,3 +1,4 @@
+class_name EnemyBase
 extends CharacterBody2D
 
 ## Node-driven base enemy with FSM, health, hitbox, hurtbox and perception
@@ -5,6 +6,8 @@ extends CharacterBody2D
 @export var move_speed: float = 100.0
 @export var chase_speed: float = 120.0
 @export var attack_range: float = 50.0
+@export var config: EnemyConfig
+@export var debug_enabled: bool = true
 @export var initial_state: StringName = &"idle"
 
 @export_node_path("Sprite2D") var sprite_path: NodePath
@@ -26,19 +29,26 @@ var _hitbox_component: Area2D
 var _alert_target: Node2D = null
 
 const StateMachineScript = preload("res://systems/fsm/StateMachine.gd")
+const EnemyConfigScript = preload("res://EnemyAI/EnemyConfig.gd")
 const IdleStateScript = preload("res://EnemyAI/states/EnemyIdleState.gd")
 const PatrolStateScript = preload("res://EnemyAI/states/PatrolState.gd")
 const ChaseStateScript = preload("res://EnemyAI/states/ChaseState.gd")
 
 func _ready() -> void:
 	_resolve_nodes()
+	_ensure_config()
 	_setup_state_machine()
 	_setup_perception()
+	_connect_state_debug()
 
 func _physics_process(delta: float) -> void:
 	if _state_machine and _state_machine.has_method("physics_update_state"):
 		_state_machine.call("physics_update_state", delta)
 	move_and_slide()
+
+func _process(delta: float) -> void:
+	if _state_machine and _state_machine.has_method("update_state"):
+		_state_machine.call("update_state", delta)
 
 func _resolve_nodes() -> void:
 	_sprite = get_node_or_null(sprite_path) as Sprite2D
@@ -55,6 +65,10 @@ func _resolve_nodes() -> void:
 		add_child(_state_machine)
 		_state_machine.set_script(StateMachineScript)
 
+func _ensure_config() -> void:
+	if config == null:
+		config = EnemyConfigScript.create_basic_enemy()
+
 func _setup_state_machine() -> void:
 	# Attach script if missing
 	if not _state_machine.get_script():
@@ -69,6 +83,7 @@ func _setup_state_machine() -> void:
 	# Set typed context
 	var ctx: Dictionary[StringName, Variant] = {
 		&"enemy": self,
+		&"config": config,
 		&"health_component": _health_component,
 		&"hurtbox_component": _hurtbox_component,
 		&"hitbox_component": _hitbox_component,
@@ -78,11 +93,19 @@ func _setup_state_machine() -> void:
 	}
 	if _state_machine.has_method("set_context"):
 		_state_machine.call("set_context", ctx)
+		if debug_enabled:
+			print("[EnemyBaseV2] Context set:", {
+				"has_enemy": ctx.has(&"enemy"),
+				"has_config": ctx.has(&"config"),
+				"initial_state": initial_state
+			})
 
 	# Initial state property and transition
 	_state_machine.set("initial_state", initial_state)
 	if _state_machine.has_method("transition_to") and initial_state != StringName():
 		_state_machine.call("transition_to", initial_state)
+		if debug_enabled:
+			print("[EnemyBaseV2] Transitioned to initial state:", initial_state)
 
 func _setup_perception() -> void:
 	if _perception == null:
@@ -91,6 +114,8 @@ func _setup_perception() -> void:
 		_perception.body_entered.connect(_on_perception_body_entered)
 	if not _perception.body_exited.is_connected(_on_perception_body_exited):
 		_perception.body_exited.connect(_on_perception_body_exited)
+	if debug_enabled:
+		print("[EnemyBaseV2] Perception connected on", self.name)
 
 func _on_perception_body_entered(body: Node) -> void:
 	var as_node2d := body as Node2D
@@ -99,13 +124,17 @@ func _on_perception_body_entered(body: Node) -> void:
 	if _is_player(as_node2d):
 		_alert_target = as_node2d
 		if _state_machine and _state_machine.has_method("transition_to"):
-			_state_machine.call("transition_to", &"move")
+			_state_machine.call("transition_to", &"chase")
+			if debug_enabled:
+				print("[EnemyBaseV2] Alerted by", as_node2d.name, "-> chase")
 
 func _on_perception_body_exited(body: Node) -> void:
 	if body == _alert_target:
 		_alert_target = null
 		if _state_machine and _state_machine.has_method("transition_to"):
 			_state_machine.call("transition_to", &"idle")
+			if debug_enabled:
+				print("[EnemyBaseV2] Target lost -> idle")
 
 func get_alert_target() -> Node2D:
 	return _alert_target
@@ -118,9 +147,53 @@ func can_attack_target(target: Node2D) -> bool:
 func move_toward_position(target_position: Vector2, speed: float) -> void:
 	var dir := (target_position - global_position).normalized()
 	velocity = dir * speed
+	if debug_enabled:
+		print("[EnemyBaseV2] move_toward_position", {"target": target_position, "speed": speed, "vel": velocity})
 
 func stop_moving() -> void:
 	velocity = velocity.move_toward(Vector2.ZERO, 800.0 * get_physics_process_delta_time())
+	if debug_enabled:
+		print("[EnemyBaseV2] stop_moving -> vel:", velocity)
+
+## Returns true if an alert target is set
+func is_alerted() -> bool:
+	return _alert_target != null
+
+## Wrapper for states expecting move_toward(position, speed)
+func move_toward(target_position: Vector2, speed: float) -> void:
+	move_toward_position(target_position, speed)
+
+## Flip sprite(s) to face a target position along X axis
+func flip_sprite_to_face(target_position: Vector2) -> void:
+	var face_left := target_position.x < global_position.x
+	if _sprite != null:
+		_sprite.flip_h = face_left
+	if _anim != null:
+		_anim.flip_h = face_left
+	if debug_enabled:
+		print("[EnemyBaseV2] flip_sprite_to_face", {"left": face_left})
+
+func _connect_state_debug() -> void:
+	if _state_machine == null:
+		return
+	if _state_machine.has_signal("state_changed"):
+		_state_machine.state_changed.connect(_on_state_changed)
+	if _state_machine.has_signal("state_entered"):
+		_state_machine.state_entered.connect(_on_state_entered)
+	if _state_machine.has_signal("state_exited"):
+		_state_machine.state_exited.connect(_on_state_exited)
+
+func _on_state_changed(prev: StringName, curr: StringName) -> void:
+	if debug_enabled:
+		print("[EnemyBaseV2] State changed:", prev, "->", curr)
+
+func _on_state_entered(curr: StringName) -> void:
+	if debug_enabled:
+		print("[EnemyBaseV2] State entered:", curr)
+
+func _on_state_exited(prev: StringName) -> void:
+	if debug_enabled:
+		print("[EnemyBaseV2] State exited:", prev)
 
 func _is_player(body: Node2D) -> bool:
 	if body.is_in_group("player"):

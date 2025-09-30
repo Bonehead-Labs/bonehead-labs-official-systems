@@ -95,7 +95,8 @@ func _setup_eventbus_listeners() -> void:
 	_catch_all_listener = Callable(self, "_on_event_catch_all")
 	EventBus.sub(EventTopics.INPUT_ACTION, _input_action_listener)
 	EventBus.sub(EventTopics.DEBUG_LOG, _debug_log_listener)
-	EventBus.sub_all(_catch_all_listener)
+	# Disable terminal spam while debugging enemy systems
+	# EventBus.sub_all(_catch_all_listener)
 
 func _on_emit_button_pressed() -> void:
 	EventBus.pub(EventTopics.DEBUG_LOG, {
@@ -116,10 +117,8 @@ func _on_debug_log_event(payload: Dictionary) -> void:
 	_log_event(EventTopics.DEBUG_LOG, payload)
 
 func _on_event_catch_all(envelope: Dictionary) -> void:
-	var topic: StringName = envelope.get("topic", StringName("unknown"))
-	var payload: Dictionary = envelope.get("payload", {})
-	var summary := "{}" if payload.is_empty() else JSON.stringify(payload)
-	print("EventBus catch-all ->", topic, summary)
+	# Intentionally disabled to reduce terminal noise during enemy debugging
+	pass
 
 func _log_event(topic: StringName, payload: Dictionary) -> void:
 	if _log_view == null:

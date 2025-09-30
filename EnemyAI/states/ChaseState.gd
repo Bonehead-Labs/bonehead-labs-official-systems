@@ -3,10 +3,10 @@ extends FSMState
 
 ## State for enemy chase behavior - pursues alert target.
 
-const EnemyBaseScript = preload("../EnemyBase.gd")
+const EnemyBaseScript = preload("../EnemyBaseV2.gd")
 const EnemyConfigScript = preload("../EnemyConfig.gd")
 
-var _enemy: EnemyBaseScript
+var _enemy: EnemyBase
 var _config: EnemyConfigScript
 var _last_known_target_position: Vector2
 var _chase_timer: float = 0.0
