@@ -9,7 +9,7 @@ signal player_landed()
 signal state_changed(previous: StringName, current: StringName)
 signal state_event(event: StringName, data: Variant)
 signal interaction_available_changed(available: bool)
-signal ability_registered(ability_id: StringName, ability: Node)
+signal ability_registered(ability_id: StringName, ability: PlayerAbilityScript)
 signal ability_unregistered(ability_id: StringName)
 # Health signals removed - use EventBus topics instead:
 # EventTopics.PLAYER_DAMAGED, EventTopics.PLAYER_HEALED, EventTopics.PLAYER_DIED
@@ -22,7 +22,8 @@ const MoveStateScript = preload("res://PlayerController/states/PlayerStateMove.g
 const JumpStateScript = preload("res://PlayerController/states/PlayerStateJump.gd")
 const FallStateScript = preload("res://PlayerController/states/PlayerStateFall.gd")
 const InteractionDetectorScript = preload("res://PlayerController/InteractionDetector.gd")
-const AbilityScript = preload("res://PlayerController/Ability.gd")
+const AbilityManagerScript = preload("res://PlayerController/AbilityManager.gd")
+const PlayerAbilityScript = preload("res://PlayerController/Ability.gd")
 const HealthComponentScript = preload("res://Combat/HealthComponent.gd")
 const DamageInfoScript = preload("res://Combat/DamageInfo.gd")
 
@@ -37,6 +38,7 @@ const STATE_FALL := StringName("fall")
 @export var state_machine_path: NodePath
 @export var enable_interaction_detector: bool = true
 @export var interaction_detector_range: float = 32.0
+@export_node_path("Node") var ability_manager_path: NodePath = ^"AbilityManager"
 @export_node_path("Node") var health_component_path: NodePath = ^"HealthComponent"
 
 var _velocity: Vector2 = Vector2.ZERO
@@ -47,7 +49,7 @@ var _state_machine: StateMachine
 var _input_service_connected: bool = false
 var _axis_values: Dictionary[StringName, float] = {}
 var _interaction_detector: InteractionDetectorScript = null
-var _abilities: Dictionary[StringName, PlayerAbility] = {}
+var _ability_manager: AbilityManager = null
 var _health_component: HealthComponentScript = null
 var _warned_missing_input_service: bool = false
 
@@ -55,6 +57,7 @@ func _ready() -> void:
     if movement_config == null:
         movement_config = MovementConfigScript.new()
     _resolve_state_machine()
+    _resolve_ability_manager()
     _resolve_health_component()
     _setup_interaction_detector()
     _connect_input_service()
@@ -63,30 +66,29 @@ func _ready() -> void:
     _was_on_floor = is_on_floor()
 
 func _process(delta: float) -> void:
-    if _state_machine and not _is_any_ability_overriding_motion():
+    if _ability_manager:
+        _ability_manager.process_frame(delta)
+    var blocks_logic: bool = _ability_manager != null and _ability_manager.blocks_logic()
+    if _state_machine and not blocks_logic:
         _state_machine.update_state(delta)
-
-    # Update active abilities
-    for ability in _abilities.values():
-        ability.update_state(delta)
 
 func _physics_process(delta: float) -> void:
     if movement_config == null:
         return
+    if _ability_manager:
+        _ability_manager.process_physics(delta)
+    var blocks_physics: bool = _ability_manager != null and _ability_manager.blocks_physics()
     if _state_machine:
         _refresh_state_context()
-        if not _is_any_ability_overriding_motion():
+        if not blocks_physics:
             _state_machine.physics_update_state(delta)
-    velocity = _velocity
+    if _ability_manager and _ability_manager.has_motion_override():
+        velocity = _ability_manager.motion_velocity()
+    else:
+        velocity = _velocity
     move_and_slide()
     _velocity = velocity
     _update_after_physics(delta)
-
-func _is_any_ability_overriding_motion() -> bool:
-    var dash: PlayerAbility = get_ability(StringName("dash"))
-    if dash and dash.has_method("is_dashing") and dash.is_dashing():
-        return true
-    return false
 
 ## Teleport the player to a spawn position and emit analytics hooks
 ## 
@@ -386,6 +388,7 @@ func _on_interaction_available_changed(available: bool) -> void:
 ## 
 ## [b]ability_id:[/b] Unique identifier for the ability
 ## [b]ability:[/b] Node containing the ability logic
+## [b]auto_activate:[/b] Optional flag to activate immediately on registration
 ## 
 ## [b]Usage:[/b]
 ## [codeblock]
@@ -393,22 +396,15 @@ func _on_interaction_available_changed(available: bool) -> void:
 ## var dash_ability = preload("res://abilities/DashAbility.gd").new()
 ## player_controller.register_ability("dash", dash_ability)
 ## [/codeblock]
-func register_ability(ability_id: StringName, ability: PlayerAbility) -> void:
-    if _abilities.has(ability_id):
-        push_warning("Ability '%s' is already registered" % ability_id)
+func register_ability(ability_id: StringName, ability: PlayerAbilityScript, auto_activate: bool = false) -> void:
+    if _ability_manager == null:
+        push_warning("AbilityManager unavailable; cannot register ability '%s'" % ability_id)
         return
-
-    # Set up the ability with this player as owner
-    ability.setup(self, ability_id)
-    _abilities[ability_id] = ability
-    
-    # Notify listeners that ability was registered
-    ability_registered.emit(ability_id, ability)
+    _ability_manager.register_ability(ability_id, ability, auto_activate)
 
 ## Unregister an ability from the player
 ## 
-## Removes an ability from the player's ability system. The ability
-## will be deactivated and removed from the abilities dictionary.
+## Removes an ability from the player's ability system via AbilityManager.
 ## 
 ## [b]ability_id:[/b] Unique identifier of the ability to remove
 ## 
@@ -418,26 +414,17 @@ func register_ability(ability_id: StringName, ability: PlayerAbility) -> void:
 ## player_controller.unregister_ability("temporary_power")
 ## [/codeblock]
 func unregister_ability(ability_id: StringName) -> void:
-    if not _abilities.has(ability_id):
-        push_warning("Ability '%s' is not registered" % ability_id)
+    if _ability_manager == null:
         return
-
-    var ability: PlayerAbility = _abilities[ability_id]
-    _abilities.erase(ability_id)
-    
-    # Deactivate the ability before removing
-    ability.deactivate()
-    
-    # Notify listeners that ability was unregistered
-    ability_unregistered.emit(ability_id)
+    _ability_manager.unregister_ability(ability_id)
 
 ## Get an ability by its ID
 ## 
-## Retrieves a registered ability from the player's ability system.
+## Retrieves a registered ability from the AbilityManager.
 ## 
 ## [b]ability_id:[/b] Unique identifier of the ability
 ## 
-## [b]Returns:[/b] The ability Node if found, null otherwise
+## [b]Returns:[/b] The ability instance if found, null otherwise
 ## 
 ## [b]Usage:[/b]
 ## [codeblock]
@@ -446,8 +433,8 @@ func unregister_ability(ability_id: StringName) -> void:
 ## if dash_ability:
 ##     dash_ability.activate()
 ## [/codeblock]
-func get_ability(ability_id: StringName) -> PlayerAbility:
-    return _abilities.get(ability_id, null) as PlayerAbility
+func get_ability(ability_id: StringName) -> PlayerAbilityScript:
+    return _ability_manager.get_ability(ability_id) if _ability_manager else null
 
 ## Activate an ability
 ## 
@@ -461,9 +448,8 @@ func get_ability(ability_id: StringName) -> PlayerAbility:
 ## player_controller.activate_ability("dash")
 ## [/codeblock]
 func activate_ability(ability_id: StringName) -> void:
-    var ability: PlayerAbility = get_ability(ability_id)
-    if ability:
-        ability.activate()
+    if _ability_manager:
+        _ability_manager.activate_ability(ability_id)
 
 ## Deactivate an ability
 ## 
@@ -477,9 +463,40 @@ func activate_ability(ability_id: StringName) -> void:
 ## player_controller.deactivate_ability("shield")
 ## [/codeblock]
 func deactivate_ability(ability_id: StringName) -> void:
-    var ability: PlayerAbility = get_ability(ability_id)
-    if ability:
-        ability.deactivate()
+    if _ability_manager:
+        _ability_manager.deactivate_ability(ability_id)
+
+func _resolve_ability_manager() -> void:
+    if _ability_manager and _ability_manager.has_controller():
+        return
+    var node: Node = null
+    if ability_manager_path.is_empty():
+        var manager: AbilityManager = AbilityManagerScript.new()
+        manager.name = "AbilityManager"
+        add_child(manager)
+        node = manager
+        ability_manager_path = manager.get_path()
+    else:
+        node = get_node_or_null(ability_manager_path)
+    if node == null:
+        push_warning("AbilityManager node not found at %s" % [ability_manager_path])
+        return
+    if node is AbilityManager:
+        _ability_manager = node
+    else:
+        push_error("Node at %s is not an AbilityManager" % [ability_manager_path])
+        return
+    _ability_manager.setup(self)
+    if not _ability_manager.ability_registered.is_connected(_on_ability_manager_registered):
+        _ability_manager.ability_registered.connect(_on_ability_manager_registered)
+    if not _ability_manager.ability_unregistered.is_connected(_on_ability_manager_unregistered):
+        _ability_manager.ability_unregistered.connect(_on_ability_manager_unregistered)
+
+func _on_ability_manager_registered(ability_id: StringName, ability: PlayerAbilityScript) -> void:
+    ability_registered.emit(ability_id, ability)
+
+func _on_ability_manager_unregistered(ability_id: StringName) -> void:
+    ability_unregistered.emit(ability_id)
 
 # Combat/Damage System - Delegates to HealthComponent
 ## Apply damage to the player
@@ -804,15 +821,9 @@ func get_save_priority() -> int:
 ## 
 ## [b]Returns:[/b] Dictionary containing ability states and custom data
 func _get_active_abilities_data() -> Dictionary:
-    var data: Dictionary = {}
-    for ability_id in _abilities:
-        var ability: PlayerAbility = _abilities[ability_id]
-        if ability.is_active():
-            data[ability_id] = {
-                "active": true,
-                "custom_data": ability.save_data() if ability.has_method("save_data") else {}
-            }
-    return data
+    if _ability_manager == null:
+        return {}
+    return _ability_manager.serialize_state()
 
 ## Load abilities from saved data
 ## 
@@ -820,20 +831,19 @@ func _get_active_abilities_data() -> Dictionary:
 ## 
 ## [b]abilities_data:[/b] Dictionary containing saved ability data
 func _load_abilities_data(abilities_data: Dictionary) -> void:
-    for ability_id in abilities_data:
-        var ability_data: Dictionary = abilities_data[ability_id]
-        var ability: PlayerAbility = get_ability(StringName(ability_id))
-        if ability:
-            var was_active: bool = ability_data.get("active", false)
-            if was_active:
-                ability.activate()
-            else:
-                ability.deactivate()
-
-            # Load custom ability data
-            var custom_data: Dictionary = ability_data.get("custom_data", {})
-            if ability.has_method("load_data"):
-                ability.load_data(custom_data)
+    if _ability_manager == null:
+        return
+    var normalized: Dictionary = {}
+    for ability_id in abilities_data.keys():
+        var entry = abilities_data[ability_id]
+        if entry is Dictionary and entry.has("state"):
+            normalized[ability_id] = entry
+        elif entry is Dictionary:
+            normalized[ability_id] = {
+                "active": entry.get("active", false),
+                "state": entry.get("custom_data", {})
+            }
+    _ability_manager.deserialize_state(normalized)
 
 ## Resolve and initialize the state machine
 ## 
@@ -1118,26 +1128,16 @@ func _on_eventbus_action(payload: Dictionary) -> void:
     var action: StringName = payload.get("action", StringName(""))
     var edge: String = payload.get("edge", "")
     var device: int = payload.get("device", 0)
+    var event: InputEvent = payload.get("event", null)
     
-    # Handle jump input
     if action == movement_config.jump_action and edge == "pressed":
         _record_jump_buffer()
     
-    # Handle interact input
     if action == movement_config.interact_action and edge == "pressed":
         interact()
 
-    # Forward dash to abilities explicitly for visibility
-    if action == StringName("dash") and edge == "pressed":
-        if EventBus and EventBus.has_method("pub"):
-            EventBus.call("pub", EventTopics.DEBUG_LOG, {"msg": "PlayerController dash event", "level": "INFO", "source": "PlayerController"})
-        var dash: PlayerAbility = get_ability(StringName("dash"))
-        if dash:
-            dash.handle_input_action(StringName("dash"), "pressed", device, null)
-    
-    # Forward to abilities
-    for ability in _abilities.values():
-        ability.handle_input_action(action, edge, device, null)
+    if _ability_manager:
+        _ability_manager.handle_input_action(action, edge, device, event)
 
 func _on_eventbus_axis(payload: Dictionary) -> void:
     """Handle input axis events from EventBus."""
@@ -1145,40 +1145,28 @@ func _on_eventbus_axis(payload: Dictionary) -> void:
     var value: float = payload.get("value", 0.0)
     var device: int = payload.get("device", 0)
     
-    # Store axis value for movement input
     _axis_values[axis] = clamp(value, -1.0, 1.0)
     
-    # Forward to abilities
-    for ability in _abilities.values():
-        ability.handle_input_axis(axis, value, device)
+    if _ability_manager:
+        _ability_manager.handle_input_axis(axis, value, device)
 
 func _on_action_event(action: StringName, edge: String, device: int, event: InputEvent) -> void:
     if action == movement_config.jump_action and edge == "pressed":
         _record_jump_buffer()
 
-    # Handle interact input
     if action == movement_config.interact_action and edge == "pressed":
         interact()
 
-    if action == StringName("dash") and edge == "pressed":
-        if EventBus and EventBus.has_method("pub"):
-            EventBus.call("pub", EventTopics.DEBUG_LOG, {"msg": "PlayerController dash (InputService)", "level": "INFO", "source": "PlayerController"})
-        var dash2: PlayerAbility = get_ability(StringName("dash"))
-        if dash2:
-            dash2.handle_input_action(StringName("dash"), "pressed", device, event)
-
-    # Forward to abilities
-    for ability in _abilities.values():
-        ability.handle_input_action(action, edge, device, event)
+    if _ability_manager:
+        _ability_manager.handle_input_action(action, edge, device, event)
 
 func _on_axis_event(axis: StringName, value: float, device: int) -> void:
     if not _input_service_connected:
         return
     _axis_values[axis] = clamp(value, -1.0, 1.0)
 
-    # Forward to abilities
-    for ability in _abilities.values():
-        ability.handle_input_axis(axis, value, device)
+    if _ability_manager:
+        _ability_manager.handle_input_axis(axis, value, device)
 
 ## Record a jump request in the buffer
 ## 
@@ -1203,12 +1191,6 @@ func _on_state_changed(previous: StringName, current: StringName) -> void:
         StringName("current"): current
     } as Dictionary[StringName, Variant])
 
-    # Notify abilities of state change
-    for ability in _abilities.values():
-        ability.handle_state_event(StringName("state_changed"), {
-            StringName("previous"): previous,
-            StringName("current"): current
-        })
 
 ## Handle state machine events
 ## 
@@ -1219,9 +1201,6 @@ func _on_state_changed(previous: StringName, current: StringName) -> void:
 func _on_state_event(event: StringName, data: Variant) -> void:
     state_event.emit(event, data)
 
-    # Forward to abilities
-    for ability in _abilities.values():
-        ability.handle_state_event(event, data)
 
 ## Emit a player event to EventBus
 ## 

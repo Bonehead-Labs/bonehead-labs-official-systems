@@ -116,7 +116,7 @@ func _on_input_action_event(payload: Dictionary) -> void:
 func _on_debug_log_event(payload: Dictionary) -> void:
 	_log_event(EventTopics.DEBUG_LOG, payload)
 
-func _on_event_catch_all(envelope: Dictionary) -> void:
+func _on_event_catch_all(_envelope: Dictionary) -> void:
 	# Intentionally disabled to reduce terminal noise during enemy debugging
 	pass
 

@@ -17,35 +17,9 @@ func _ready() -> void:
 	player_landed.connect(_on_player_landed)
 	state_changed.connect(_on_state_changed)
 
-	# Ensure dash action exists with default binding (Shift)
-	_ensure_dash_action()
-
 	# Connect attack input via services
 	_connect_attack_input()
 
-	# Register Dash ability
-	var dash: PlayerAbility = preload("res://PlayerController/abilities/DashAbility.gd").new() as PlayerAbility
-	register_ability(StringName("dash"), dash)
-	activate_ability(StringName("dash"))
-
-func _ensure_dash_action() -> void:
-	if not InputMap.has_action("dash"):
-		InputMap.add_action("dash")
-		var ev := InputEventKey.new()
-		ev.keycode = KEY_SHIFT
-		# Also set physical keycode to improve detection on some layouts
-		ev.physical_keycode = KEY_SHIFT
-		InputMap.action_add_event("dash", ev)
-		print("[BasePlayer] Added default dash binding -> SHIFT")
-	else:
-		var events := InputMap.action_get_events("dash")
-		print("[BasePlayer] dash action exists; events:", events)
-		if events.is_empty():
-			var ev2 := InputEventKey.new()
-			ev2.keycode = KEY_SHIFT
-			ev2.physical_keycode = KEY_SHIFT
-			InputMap.action_add_event("dash", ev2)
-			print("[BasePlayer] Added fallback dash binding -> SHIFT")
 
 	# Spawn at current transform
 	spawn(global_position)
@@ -70,21 +44,21 @@ func _on_action_event(action: StringName, edge: String, device: int, event: Inpu
 	print("[BasePlayer] _on_action_event: action=", action, " edge=", edge)
 	if action == StringName("attack") and edge == "pressed":
 		_handle_attack_input()
-	elif action == StringName("dash") and edge == "pressed":
-		print("[BasePlayer] dash action detected via InputService")
-		_handle_dash_input_action(action, edge, device, event)
+	else:
+		# Forward all other input to parent PlayerController
+		super._on_action_event(action, edge, device, event)
 
 func _on_eventbus_action(payload: Dictionary) -> void:
 	var action: StringName = payload.get("action", StringName(""))
 	var edge: String = payload.get("edge", "")
-	var device: int = payload.get("device", 0)
-	var event: InputEvent = payload.get("event", null)
+	var _device: int = payload.get("device", 0)
+	var _event: InputEvent = payload.get("event", null)
 	print("[BasePlayer] _on_eventbus_action: action=", action, " edge=", edge)
 	if action == StringName("attack") and edge == "pressed":
 		_handle_attack_input()
-	elif action == StringName("dash") and edge == "pressed":
-		print("[BasePlayer] dash action detected via EventBus")
-		_handle_dash_input_action(action, edge, device, event)
+	else:
+		# Forward all other input to parent PlayerController
+		super._on_eventbus_action(payload)
 
 
 func _handle_attack_input() -> void:
@@ -96,9 +70,3 @@ func _handle_attack_input() -> void:
 			print("Failed to transition to attack state: ", result)
 	else:
 		print("Attack ignored - current state is: ", current_state)
-
-func _handle_dash_input_action(action: StringName, edge: String, device: int, event: InputEvent) -> void:
-	print("[BasePlayer] _handle_dash_input_action called")
-	# Forward to PlayerController's input handling system (call the parent's method directly)
-	super._on_action_event(action, edge, device, event)
-

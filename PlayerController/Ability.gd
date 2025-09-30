@@ -1,80 +1,71 @@
-class_name PlayerAbility
+class_name Ability
 extends RefCounted
 
-## Base class for player abilities that can be registered with the FSM.
-## Abilities can hook into state changes, input events, and provide custom behavior.
+## Base contract for modular player abilities managed by AbilityManager.
 
 const EventTopics = preload("res://EventBus/EventTopics.gd")
 
 var _controller: Node = null
 var _ability_id: StringName = StringName()
 var _is_active: bool = false
+var _was_setup: bool = false
 
-## Called when the ability is registered with a controller.
 func setup(controller: Node, ability_id: StringName) -> void:
 	_controller = controller
 	_ability_id = ability_id
+	_was_setup = true
+	_on_setup()
 
-## Called when the ability is activated.
 func activate() -> void:
+	if not _was_setup:
+		push_warning("Ability %s activated before setup" % [_ability_id])
+	if _is_active:
+		return
 	_is_active = true
 	_on_activated()
 
-## Called when the ability is deactivated.
 func deactivate() -> void:
+	if not _is_active:
+		return
 	_is_active = false
 	_on_deactivated()
 
-## Returns whether this ability is currently active.
 func is_active() -> bool:
 	return _is_active
 
-## Called by FSM when a state transition occurs.
-## Return true to allow the transition, false to block it.
-func can_transition_to_state(_state_id: StringName, _payload: Dictionary[StringName, Variant] = {}) -> bool:
-	return true
-
-## Called by FSM during state updates.
-func update_state(delta: float) -> void:
-	if _is_active:
-		_on_update(delta)
-
-## Called by FSM when handling state events.
-func handle_state_event(event: StringName, data: Variant) -> void:
-	if _is_active:
-		_on_state_event(event, data)
-
-## Called by controller when input actions occur.
 func handle_input_action(action: StringName, edge: String, device: int, event: InputEvent) -> void:
-	if _is_active:
-		_on_input_action(action, edge, device, event)
+	if not _is_active:
+		return
+	on_input_action(action, edge, device, event)
 
-## Called by controller when axis input occurs.
 func handle_input_axis(axis: StringName, value: float, device: int) -> void:
-	if _is_active:
-		_on_input_axis(axis, value, device)
+	if not _is_active:
+		return
+	on_input_axis(axis, value, device)
 
-## Override these methods in derived classes:
-
-func _on_activated() -> void:
+func on_update(_delta: float) -> void:
 	pass
 
-func _on_deactivated() -> void:
+func on_physics_update(_delta: float) -> void:
 	pass
 
-func _on_update(_delta: float) -> void:
+func on_input_action(_action: StringName, _edge: String, _device: int, _event: InputEvent) -> void:
 	pass
 
-func _on_state_event(_event: StringName, _data: Variant) -> void:
+func on_input_axis(_axis: StringName, _value: float, _device: int) -> void:
 	pass
 
-func _on_input_action(_action: StringName, _edge: String, _device: int, _event: InputEvent) -> void:
-	pass
+func is_overriding_motion() -> bool:
+	return false
 
-func _on_input_axis(_axis: StringName, _value: float, _device: int) -> void:
-	pass
+func motion_priority() -> float:
+	return 0.0
 
-## Utility methods for derived classes:
+func motion_velocity() -> Vector2:
+	return Vector2.ZERO
+
+func blocks_state_kind(_kind: StringName) -> bool:
+	return false
 
 func get_controller() -> Node:
 	return _controller
@@ -82,14 +73,33 @@ func get_controller() -> Node:
 func get_ability_id() -> StringName:
 	return _ability_id
 
-func emit_ability_event(event: StringName, data: Variant = null) -> void:
-	if _controller:
-		_controller.state_event.emit(StringName("ability_" + _ability_id + "_" + event), data)
+func emit_lifecycle_event(event_bus: Node, topic: StringName, payload: Dictionary[StringName, Variant]) -> void:
+	if event_bus == null:
+		return
+	payload[StringName("ability_id")] = _ability_id
+	payload[StringName("timestamp_ms")] = Time.get_ticks_msec()
+	event_bus.call_deferred("pub", topic, payload)
 
-func _emit_analytics_event(topic: StringName, payload: Dictionary[StringName, Variant]) -> void:
+func emit_debug_log(message: String, level: String = "INFO", extra: Dictionary = {}) -> void:
 	if Engine.has_singleton("EventBus"):
+		var payload: Dictionary[StringName, Variant] = extra.duplicate(true) as Dictionary[StringName, Variant]
+		payload[StringName("message")] = message
+		payload[StringName("level")] = level
 		payload[StringName("ability_id")] = _ability_id
-		payload[StringName("timestamp_ms")] = Time.get_ticks_msec()
-		if _controller:
-			payload[StringName("player_position")] = _controller.global_position
-		Engine.get_singleton("EventBus").call("pub", topic, payload)
+		payload[StringName("source")] = StringName("Ability.%s" % [_ability_id])
+		Engine.get_singleton("EventBus").call_deferred("pub", EventTopics.DEBUG_LOG, payload)
+
+func serialize_state() -> Dictionary:
+	return {}
+
+func deserialize_state(_data: Dictionary) -> void:
+	pass
+
+func _on_setup() -> void:
+	pass
+
+func _on_activated() -> void:
+	pass
+
+func _on_deactivated() -> void:
+	pass

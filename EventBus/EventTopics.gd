@@ -64,6 +64,9 @@ const PLAYER_MANA_CHANGED     : StringName = &"player/mana_changed"      # {valu
 const PLAYER_INTERACTION_DETECTED : StringName = &"player/interaction_detected" # {interactable_type, interactable_name, distance}
 const PLAYER_INTERACTION_LOST : StringName = &"player/interaction_lost" # {interactable_type, interactable_name}
 const PLAYER_INTERACTION_EXECUTED : StringName = &"player/interaction_executed" # {interactable_type, interactable_name, interaction_position}
+const PLAYER_ABILITY_STARTED  : StringName = &"player/ability_started"  # {ability_id, metadata?}
+const PLAYER_ABILITY_ENDED    : StringName = &"player/ability_ended"    # {ability_id, metadata?}
+const PLAYER_ABILITY_FAILED   : StringName = &"player/ability_failed"   # {ability_id, reason, details?}
 const PLAYER_ABILITY_USED     : StringName = &"player/ability_used"      # {ability_type, ability_id, data?}
 
 # Combat System Events
@@ -225,7 +228,7 @@ static var ALL : Array[StringName] = [
     PLAYER_STATE_CHANGED, PLAYER_STATUS_EFFECT, PLAYER_ITEM_PICKUP,
     PLAYER_ITEM_USED, PLAYER_STAMINA_CHANGED, PLAYER_MANA_CHANGED,
     PLAYER_INTERACTION_DETECTED, PLAYER_INTERACTION_LOST, PLAYER_INTERACTION_EXECUTED,
-    PLAYER_ABILITY_USED,
+    PLAYER_ABILITY_STARTED, PLAYER_ABILITY_ENDED, PLAYER_ABILITY_FAILED, PLAYER_ABILITY_USED,
 
     # enemy
     ENEMY_SPAWNED, ENEMY_ALERTED, ENEMY_DEFEATED, ENEMY_STATE_CHANGED,

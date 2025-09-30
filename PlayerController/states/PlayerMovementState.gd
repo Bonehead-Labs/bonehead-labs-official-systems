@@ -1,5 +1,7 @@
 extends FSMState
 
+class_name PlayerMovementState
+
 var controller: _PlayerController2D
 var movement_config: MovementConfig
 
