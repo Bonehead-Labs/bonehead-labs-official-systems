@@ -37,6 +37,7 @@ const STATE_FALL := StringName("fall")
 @export var state_machine_path: NodePath
 @export var enable_interaction_detector: bool = true
 @export var interaction_detector_range: float = 32.0
+@export_node_path("Node") var health_component_path: NodePath = ^"HealthComponent"
 
 var _velocity: Vector2 = Vector2.ZERO
 var _coyote_timer: float = 0.0
@@ -54,7 +55,7 @@ func _ready() -> void:
     if movement_config == null:
         movement_config = MovementConfigScript.new()
     _resolve_state_machine()
-    _setup_health_component()
+    _resolve_health_component()
     _setup_interaction_detector()
     _connect_input_service()
     _connect_eventbus_input()
@@ -336,14 +337,15 @@ func _exit_tree() -> void:
     _disconnect_eventbus_input()
     _disconnect_eventbus_health()
 
-func _setup_health_component() -> void:
-    _health_component = HealthComponentScript.new()
-    _health_component.max_health = 100.0  # Could be configurable
-    _health_component.invulnerability_duration = 0.5
-    _health_component.auto_register_with_save_service = false  # We'll handle save registration
-    add_child(_health_component)
-
-    # HealthComponent already publishes to EventBus - no need for signal forwarding
+func _resolve_health_component() -> void:
+    var node: Node = null
+    if not health_component_path.is_empty():
+        node = get_node_or_null(health_component_path)
+    if node == null:
+        node = find_child("HealthComponent", true, false)
+    _health_component = node as HealthComponentScript
+    if _health_component == null:
+        push_error("PlayerController: Missing HealthComponent at %s" % (str(health_component_path)))
 
 func _setup_interaction_detector() -> void:
     if not enable_interaction_detector or Engine.is_editor_hint():
