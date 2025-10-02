@@ -38,8 +38,8 @@ initial_state = &"idle"
 
 [node name="AbilityManager" type="Node" parent="."]
 script = ExtResource("5_ability_manager")
-default_abilities = {"dash": "res://PlayerController/abilities/DashAbility.gd"}
-auto_activate_ids = ["dash"]
+default_abilities = {"dash": "res://PlayerController/abilities/DashAbility.gd", "fireball": "res://PlayerController/abilities/FireballAbility.gd"}
+auto_activate_ids = ["dash", "fireball"]
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("3_health")
