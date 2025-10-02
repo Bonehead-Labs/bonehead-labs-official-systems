@@ -1,12 +1,13 @@
-[gd_scene load_steps=9 format=3 uid="uid://38u4fe2ahkl8"]
+[gd_scene load_steps=13 format=3 uid="uid://38u4fe2ahkl8"]
 
 [ext_resource type="Script" uid="uid://bvw4pjy0afk8i" path="res://PlayerController/BasePlayer.gd" id="1_base_player"]
 [ext_resource type="Script" uid="uid://c6poeldvjadm3" path="res://PlayerController/MovementConfig.gd" id="2_blkw4"]
 [ext_resource type="Script" uid="uid://dvanv42j3w4m" path="res://systems/fsm/StateMachine.gd" id="2_state_machine"]
 [ext_resource type="Script" uid="uid://divbrf64g8hv4" path="res://Combat/HealthComponent.gd" id="3_health"]
 [ext_resource type="Texture2D" uid="uid://cpevkofokkwdo" path="res://icon.svg" id="4_icon"]
-[ext_resource type="Script" uid="uid://2aca2b08d85c4d66" path="res://PlayerController/AbilityManager.gd" id="5_ability_manager"]
-
+[ext_resource type="Script" uid="uid://daestsdjvj8vl" path="res://PlayerController/AbilityManager.gd" id="5_ability_manager"]
+[ext_resource type="Script" uid="uid://cfci1tx7eki0u" path="res://Combat/HurtboxComponent.gd" id="6_hurtbox"]
+[ext_resource type="Script" uid="uid://1xughcuh2x3v" path="res://Combat/HitboxComponent.gd" id="7_hitbox"]
 
 [sub_resource type="Resource" id="Resource_bn36t"]
 script = ExtResource("2_blkw4")
@@ -19,10 +20,15 @@ metadata/_custom_type_script = "uid://c6poeldvjadm3"
 [sub_resource type="RectangleShape2D" id="1_body_shape"]
 size = Vector2(128, 130)
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hurtbox"]
+size = Vector2(48, 48)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_hitbox"]
+size = Vector2(147, 145)
+
 [node name="Player" type="CharacterBody2D"]
 script = ExtResource("1_base_player")
 movement_config = SubResource("Resource_bn36t")
-ability_manager_path = NodePath("AbilityManager")
 state_machine_path = NodePath("StateMachine")
 
 [node name="Sprite2D" type="Sprite2D" parent="."]
@@ -38,9 +44,31 @@ initial_state = &"idle"
 
 [node name="AbilityManager" type="Node" parent="."]
 script = ExtResource("5_ability_manager")
-default_abilities = {"dash": "res://PlayerController/abilities/DashAbility.gd", "fireball": "res://PlayerController/abilities/FireballAbility.gd"}
-auto_activate_ids = ["dash", "fireball"]
+default_abilities = {
+"dash": "res://PlayerController/abilities/DashAbility.gd",
+"fireball": "res://PlayerController/abilities/FireballAbility.gd"
+}
+auto_activate_ids = Array[StringName]([&"dash", &"fireball"])
 
 [node name="HealthComponent" type="Node" parent="."]
 script = ExtResource("3_health")
 auto_register_with_save_service = false
+
+[node name="HurtboxComponent" type="Area2D" parent="."]
+script = ExtResource("6_hurtbox")
+health_component_path = NodePath("../HealthComponent")
+faction = "player"
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HurtboxComponent"]
+shape = SubResource("RectangleShape2D_hurtbox")
+
+[node name="HitboxComponent" type="Area2D" parent="."]
+script = ExtResource("7_hitbox")
+faction = "player"
+damage_amount = 999.0
+activation_duration = 0.8
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="HitboxComponent"]
+position = Vector2(0.5, 1.5)
+shape = SubResource("RectangleShape2D_hitbox")
+debug_color = Color(0.9650709, 0.15663907, 0.2741524, 0.41960785)

@@ -7,7 +7,7 @@ extends CharacterBody2D
 @export var chase_speed: float = 120.0
 @export var attack_range: float = 50.0
 @export var config: EnemyConfig
-@export var debug_enabled: bool = true
+@export var debug_enabled: bool = false
 @export var initial_state: StringName = &"idle"
 
 @export_node_path("Sprite2D") var sprite_path: NodePath
@@ -40,6 +40,7 @@ func _ready() -> void:
 	_setup_state_machine()
 	_setup_perception()
 	_connect_state_debug()
+	_connect_health_death()
 
 func _physics_process(delta: float) -> void:
 	if _state_machine and _state_machine.has_method("physics_update_state"):
@@ -201,6 +202,30 @@ func _is_player(body: Node2D) -> bool:
 	if body.has_method("player"):
 		return true
 	return String(body.name) == "Player"
+
+func _connect_health_death() -> void:
+	if _health_component and _health_component.has_signal("died"):
+		_health_component.died.connect(_on_health_died)
+
+func _on_health_died(source: Node, damage_info: Variant) -> void:
+	# Hide the enemy visually
+	if _sprite:
+		_sprite.visible = false
+	if _anim:
+		_anim.visible = false
+	
+	# Disable collision and hurtbox
+	if has_node("CollisionShape2D"):
+		get_node("CollisionShape2D").disabled = true
+	if _hurtbox_component:
+		_hurtbox_component.set_enabled(false)
+	
+	# Stop movement
+	velocity = Vector2.ZERO
+	
+	# Remove from scene after a short delay
+	var timer: SceneTreeTimer = get_tree().create_timer(0.5)
+	timer.timeout.connect(func(): queue_free())
 
 
 

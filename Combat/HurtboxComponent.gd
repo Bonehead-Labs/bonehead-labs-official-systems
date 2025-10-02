@@ -23,6 +23,7 @@ signal damage_taken(amount: float, source: Node, damage_info: Variant)
 var _health_component: Variant = null
 var _knockback_resolver: Variant = null
 var _overlapping_hitboxes: Array[Variant] = []
+var _hitbox_active_state: Dictionary = {}
 
 func _ready() -> void:
 	# Set up area properties
@@ -73,6 +74,7 @@ func _on_area_entered(area: Area2D) -> void:
 	# Add to overlapping hitboxes
 	if not _overlapping_hitboxes.has(hitbox):
 		_overlapping_hitboxes.append(hitbox)
+		_hitbox_active_state[hitbox] = hitbox.is_active() if hitbox.has_method("is_active") else false
 
 	# Apply damage if hitbox is active
 	if hitbox.is_active():
@@ -82,6 +84,21 @@ func _on_area_exited(area: Area2D) -> void:
 	var hitbox = area
 	if hitbox and _overlapping_hitboxes.has(hitbox):
 		_overlapping_hitboxes.erase(hitbox)
+		_hitbox_active_state.erase(hitbox)
+
+func _process(_delta: float) -> void:
+	# Handle activation that occurs while already overlapping
+	if not enabled:
+		return
+	for hitbox in _overlapping_hitboxes:
+		if hitbox == null or not hitbox.has_method("is_active"):
+			continue
+		var was_active: bool = _hitbox_active_state.get(hitbox, false)
+		var now_active: bool = hitbox.is_active()
+		if now_active and not was_active:
+			# First frame of activation while overlapping -> apply damage once
+			_apply_hitbox_damage(hitbox)
+		_hitbox_active_state[hitbox] = now_active
 
 func _can_take_damage_from(hitbox: Variant) -> bool:
 	# Check faction compatibility

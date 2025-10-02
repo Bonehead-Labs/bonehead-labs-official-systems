@@ -17,6 +17,13 @@ func enter(payload: Dictionary[StringName, Variant] = {}) -> void:
 	attack_timer = attack_duration
 	can_attack = false
 	
+	# Activate player's hitbox during attack window
+	if controller:
+		var hitbox: Area2D = controller.get_node_or_null("HitboxComponent") as Area2D
+		if hitbox and hitbox.has_method("activate"):
+			hitbox.call("reset_damage_tracking")
+			hitbox.call("activate")
+	
 	# Store original visual properties for restoration
 	if controller:
 		original_modulate = controller.modulate
@@ -39,6 +46,10 @@ func exit(payload: Dictionary[StringName, Variant] = {}) -> void:
 	if controller:
 		controller.modulate = original_modulate
 		controller.scale = original_scale
+		# Deactivate hitbox on exit
+		var hitbox: Area2D = controller.get_node_or_null("HitboxComponent") as Area2D
+		if hitbox and hitbox.has_method("deactivate"):
+			hitbox.call("deactivate")
 		
 		# Print debug info
 		print("Player finished attacking!")
