@@ -28,6 +28,7 @@ ThemeService="*res://UI/Theme/ThemeService.gd"
 ThemeLocalization="*res://UI/Theme/LocalizationHelper.gd"
 ItemDatabase="*res://ItemsEconomy/ItemDatabase.gd"
 AudioService="*res://AudioService/AudioService.gd"
+PopUpNumbers="*res://Animations/PopUpNumbers.gd"
 
 [editor_plugins]
 

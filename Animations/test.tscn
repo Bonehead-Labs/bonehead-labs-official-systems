@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3 uid="uid://dy8v65auswjqs"]
+
+[ext_resource type="Script" uid="uid://pqjlo7jrljw2" path="res://Animations/popup_number_sample.gd" id="1_viqlt"]
+
+[node name="Test" type="Node2D"]
+script = ExtResource("1_viqlt")
+
+[node name="Marker2D" type="Marker2D" parent="."]
+position = Vector2(27, 25)
