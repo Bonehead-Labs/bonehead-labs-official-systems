@@ -1,7 +1,6 @@
 class_name _InputService
 extends Node
 
-const InputConfig = preload("res://InputService/InputConfig.gd")
 
 # ───────────────────────────────────────────────────────────────────────────────
 # InputService (Godot 4)
