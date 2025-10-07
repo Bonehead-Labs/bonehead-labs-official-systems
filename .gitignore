@@ -2,6 +2,6 @@
 .godot/
 /android/
 addons
-
+.editorconfig
 # Dev ignores
 .cursor
