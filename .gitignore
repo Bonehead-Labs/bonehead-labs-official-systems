@@ -7,3 +7,6 @@ project.godot
 
 # Dev ignores
 .cursor
+
+*.import
+*.uid
